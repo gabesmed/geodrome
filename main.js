@@ -32,7 +32,7 @@ controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.addEventListener('change', render);
 
 // SET UP LIGHTING
-scene.add(new THREE.AmbientLight(0x666666));
+scene.add(new THREE.AmbientLight(0xcccccc));
 var light = new THREE.DirectionalLight(0xffffff);
 light.position.set(-1, 1, 1).normalize();
 scene.add(light);
@@ -56,7 +56,8 @@ function initMap() {
     map: map, path: [],
     strokeColor: "#000000",
     strokeOpacity: 0.5,
-    strokeWeight: 7
+    strokeWeight: 7,
+    clickable: false
   });
 }
 
@@ -226,18 +227,36 @@ function createEnvironment(panoData, depthMap) {
   // create points
   var points = pointsFromPanoAndDepth(panoData, depthMap);
   var offset = offsetForLocation(panoData.location.latLng);
-  var pointSprites = [], point;
-  var spriteMaterial, sprite;
+  var geom = new THREE.Geometry();
+  var geomMaterial = new THREE.MeshLambertMaterial({
+    color: 0xffffff, shading: THREE.FlatShading,
+    vertexColors: THREE.VertexColors,
+    side: THREE.DoubleSide
+  });
+  var point, color;
+
   for(var i = 0, l = points.points.length; i < l; i++) {
-    spriteMaterial = new THREE.SpriteMaterial({color: points.colors[i]});
-    sprite = new THREE.Sprite(spriteMaterial);
-    point = points.points[i];
-    sprite.position.copy(point);
-    sprite.position.add(offset);
-    sprite.scale.set(0.6, 0.6, 0.6);
-    scene.add(sprite);
-    pointSprites.push(sprite);
+    point = points.points[i].clone().add(offset);
+    geom.vertices.push(
+      new THREE.Vector3(point.x, point.y - 0.3, point.z - 0.3),
+      new THREE.Vector3(point.x, point.y + 0.3, point.z - 0.3),
+      new THREE.Vector3(point.x, point.y + 0.3, point.z + 0.3),
+      new THREE.Vector3(point.x, point.y - 0.3, point.z + 0.3),
+      new THREE.Vector3(point.x - 0.3, point.y - 0.3, point.z),
+      new THREE.Vector3(point.x - 0.3, point.y + 0.3, point.z),
+      new THREE.Vector3(point.x + 0.3, point.y + 0.3, point.z),
+      new THREE.Vector3(point.x + 0.3, point.y - 0.3, point.z));
+    color = new THREE.Color(points.colors[i]);
+    geom.faces.push(new THREE.Face3(i*8+0, i*8+1, i*8+2));
+    geom.faces.push(new THREE.Face3(i*8+2, i*8+3, i*8+0));
+    geom.faces.push(new THREE.Face3(i*8+4+0, i*8+4+1, i*8+4+2));
+    geom.faces.push(new THREE.Face3(i*8+4+2, i*8+4+3, i*8+4+0));
+    geom.faces[i*4].vertexColors = geom.faces[i*4+1].vertexColors = 
+      geom.faces[i*4+2].vertexColors = geom.faces[i*4+3].vertexColors = 
+      [color, color, color];
   }
+
+  var geomMesh = new THREE.Mesh(geom, geomMaterial);
 
   // create center cube
   var cubeGeometry = new THREE.CubeGeometry(1, 1, 1);
@@ -248,7 +267,7 @@ function createEnvironment(panoData, depthMap) {
   scene.add(centerCube);  
 
   environments[panoData.panoId] = {
-    pointSprites: pointSprites,
+    geom: geomMesh,
     centerCube: centerCube,
     visible: false
   };
@@ -258,7 +277,7 @@ function objectsForPano(panoId) {
   if(!environments[panoId]) {
     console.error("Pano " + panoId + " not found."); return []; }
   var objs = [];
-  objs = objs.concat(environments[panoId].pointSprites);
+  objs.push(environments[panoId].geom);
   objs.push(environments[panoId].centerCube);
   return objs;
 }
@@ -370,15 +389,14 @@ function updateScene() {
   hideAllPanos();
   if(waypoints.length === 0) { render(); return RSVP.reject("No waypoints."); }
   var promiseChain = RSVP.resolve();
-  waypoints.forEach(function(waypoint, i) {
+  finalRoute.forEach(function(location, i) {
     promiseChain = promiseChain.then(function() {
-      console.info('rendering ' + (i + 1) + ' / ' + waypoints.length);
-      return createEnvironmentAtLocation(waypoint);
-    }).then(function() {
-      render();
+      console.info('rendering ' + (i + 1) + ' / ' + finalRoute.length);
+      return createEnvironmentAtLocation(location);
     });
   });
   promiseChain.then(function() {
+    render();
     console.info('complete!');
   }, function(err) {
     console.error(err);
