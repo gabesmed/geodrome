@@ -1,0 +1,10 @@
+#frame {
+    overflow: auto;
+}
+#mapContainer { float: left; width: 300px; margin-right: 10px; }
+#mapCanvas { height: 600px; width: 300px; }
+#renderContainer { float: left; width: 800px; height: 600px; }
+
+#extras {
+    margin-top: 10px;
+}
