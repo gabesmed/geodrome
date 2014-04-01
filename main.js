@@ -261,9 +261,9 @@ function pointFromPanoCoords(panoData, depthData, x, y) {
   // get angle
   var azimuth = (x * twoPi) + panoHeading;
   var altitude = Math.PI * (0.5 - y);
-  var nx = -Math.cos(altitude) * Math.sin(azimuth);
-  var ny = Math.cos(azimuth);
-  var nz = Math.sin(altitude) * Math.sin(azimuth);
+  var nx = -Math.cos(azimuth) * Math.cos(altitude);
+  var ny = Math.sin(altitude);
+  var nz = Math.sin(azimuth) * Math.cos(altitude);
   var n = new THREE.Vector3(nx, ny, nz);
   n.multiplyScalar(depth);
   return n;
@@ -276,46 +276,27 @@ function pointsFromPanoAndDepth(panoData, depthData) {
     panoImage.height);
 
   // beta/lat, lambda/lng
-  var raysLng = 120, raysLat = 60, lngIndex, latIndex, lat, lng, x, y, z, ym;
-  var panoX, panoY, panoIndex, depthX, depthY, c, depth, depthZ;
-  var n, points = [], colors = [];
-  var lngOffset = twoPi * (-panoData.heading / 360.0);
+  var raysLng = 120, raysLat = 60, lngIndex, latIndex;
+  var panoX, panoY, panoIndex, c;
+  var n, points = [];
+  // var lngOffset = twoPi * (-panoData.heading / 360.0);
   for(lngIndex = 0; lngIndex < raysLng; lngIndex++) {
-    lng = lngOffset + (lngIndex * twoPi / raysLng);
-    while(lng > twoPi) { lng -= twoPi; }
-    x = -Math.cos(lng);
-    z = Math.sin(lng);
     for(latIndex = 1; latIndex <= raysLat * 0.51; latIndex++) {
-      // calculate normal
-      lat = Math.PI * 0.5 - (latIndex * Math.PI / raysLat);
-      y = Math.sin(lat);
-      ym = Math.cos(lat);  // y modifier, how close to center are you
-      n = new THREE.Vector3(x * ym, y, z * ym);
-
-      // calculate depth
-      depthX = Math.floor(lngIndex * depthData.width / raysLng);
-      depthY = Math.floor(latIndex * depthData.height / raysLat);
-      depthIndex = depthY * depthData.width + depthX;
-      depth = depthData.depthMap[depthIndex];
-
-      // sky map; doesn't count!
-      if(depth > 100000000) { continue; }
-
-      // final point
-      n.multiplyScalar(depth);
+      n = pointFromPanoCoords(panoData, depthData,
+        lngIndex / raysLng, latIndex / raysLat);
+      if(!n) { continue; }
       points.push(n);
 
       // calculate color
       panoX = Math.floor(lngIndex * panoImage.width / raysLng);
       panoY = Math.floor(latIndex * panoImage.height / raysLat);
       panoIndex = 4 * (panoY * panoImage.width + panoX);
-      c = (panoImageData.data[panoIndex] << 16) +
+      n.c = (panoImageData.data[panoIndex] << 16) +
         (panoImageData.data[panoIndex + 1] << 8) +
         panoImageData.data[panoIndex + 2];
-      colors.push(c);
     }
   }
-  return {points: points, colors: colors};
+  return points;
 }
 
 function initScene() {
@@ -356,8 +337,8 @@ function createEnvironment(panoData, depthData) {
   });
   var point, color;
 
-  for(var i = 0, l = points.points.length; i < l; i++) {
-    point = points.points[i].clone().add(offset);
+  for(var i = 0, l = points.length; i < l; i++) {
+    point = points[i].clone().add(offset);
     geom.vertices.push(
       new THREE.Vector3(point.x, point.y - 0.3, point.z - 0.3),
       new THREE.Vector3(point.x, point.y + 0.3, point.z - 0.3),
@@ -367,7 +348,7 @@ function createEnvironment(panoData, depthData) {
       new THREE.Vector3(point.x - 0.3, point.y + 0.3, point.z),
       new THREE.Vector3(point.x + 0.3, point.y + 0.3, point.z),
       new THREE.Vector3(point.x + 0.3, point.y - 0.3, point.z));
-    color = new THREE.Color(points.colors[i]);
+    color = new THREE.Color(points[i].c);
     geom.faces.push(new THREE.Face3(i*8+0, i*8+1, i*8+2));
     geom.faces.push(new THREE.Face3(i*8+2, i*8+3, i*8+0));
     geom.faces.push(new THREE.Face3(i*8+4+0, i*8+4+1, i*8+4+2));
@@ -452,63 +433,18 @@ function drawDepthImage(depthData) {
   return depthImage;
 }
 
-function loadPanoAtLocation(location) {
-  return new RSVP.Promise(function(resolve, reject) {
-    var panoLoader = new GSVPANO.PanoLoader({zoom: 1});
-    var panoData;
-    panoLoader.onPanoramaData = function(result) {
-      panoData = result;
-    };
-    panoLoader.onPanoramaLoad = function() {
-      resolve({
-        canvas: this.canvas,
-        heading: panoData.tiles.centerHeading,
-        location: panoData.location,
-        panoId: this.panoId
-      });
-    };
-    panoLoader.onError = function(errorMessage) {
-      console.error(errorMessage);
-      reject(errorMessage);
-    };
-    panoLoader.load(location);
-  });
-}
-
-function loadDepthMap(panoId) {
-  return new RSVP.Promise(function(resolve, reject) {
-    var depthLoader = new GSVPANO.PanoDepthLoader();
-    depthLoader.onDepthLoad = function() {
-      resolve(this.depthMap);
-    };
-    depthLoader.onError = function(errorMessage) {
-      console.error(errorMessage);
-      reject(errorMessage);
-    };
-    depthLoader.load(panoId);
-  });
-}
-
 function createEnvironmentAtLocation(location) {
   // load pano
-  var panoData;
-  return loadPanoAtLocation(location).then(function(result) {
-    // add pano canvas to doc
-    panoData = result;
-    $("#panoContainer").html(panoData.canvas);
+  var pano = new Pano();
+  return pano.load(location).then(function() {
+    $("#panoContainer").html(pano.panoData.canvas);
+    var depthImage = drawDepthImage(pano.depthData);
+    $("#depthContainer").html(depthImage);
     // If we already have it loaded, just proceed to showing
-    if(!!environments[panoData.panoId]) { return true; }
-    // Otherwise, get the depth map and create the environment.
-    return loadDepthMap(panoData.panoId).then(function(depthData) {
-      console.dir(depthData.planes);
-      // draw depth map
-      var depthImage = drawDepthImage(depthData);
-      $("#depthContainer").html(depthImage);
-      // and init scene
-      createEnvironment(panoData, depthData);
-    });
+    if(!!environments[pano.panoData.panoId]) { return true; }
+    createEnvironment(pano.panoData, pano.depthData);
   }).then(function() {
-    showPano(panoData.panoId);
+    showPano(pano.panoData.panoId);
   });
 }
 
