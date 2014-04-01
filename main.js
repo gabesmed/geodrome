@@ -218,87 +218,6 @@ function initRenderer() {
   camera.lookAt(new THREE.Vector3(0, 0, 0));
 }
 
-function planesFromPanoAndDepth(panoData, depthData) {
-  var planes = [],
-    depthMap = depthData.depthMap,
-    dm, d0, d1, ym0, ym1, ym, lng0, lng1,
-    x0mid, x1mid;
-
-  ym = 0; // eye level is always at zero.
-
-  depthData.planes.forEach(function(planeData) {
-    // get distance to top (d0), bottom (d1), and eye-level (dm)
-    dm = depthMap[ym * w + x];
-    d0 = depthMap[Math.floor(planeData.x05y0 * h) * w + x];
-    d1 = depthMap[Math.floor(planeData.x05y1 * h) * w + x];
-    // figure out height from eye to top and eye to bottom
-    // if d0 or d1 < dm, then it's higher, so height is positive.
-    // otherwise it's lower than eye level so height is negative.
-    ym0 = Math.sqrt(d0 * d0 - dm * dm) * (d0 < dm ? 1 : -1);
-    ym1 = Math.sqrt(d1 * d1 - dm * dm) * (d1 < dm ? 1 : -1);
-    // y top and y bottom in world coordinates.
-    y0 = ym0 + ym;
-    y1 = ym1 + ym;
-    // now get x
-    lng0 = planeData.x0 * twoPi;
-    lng1 = planeData.x1 * twoPi;
-    x0mid = pointFromPanoCoords(panoData, depthData, planeData.x0, 0.5);
-    x1mid = pointFromPanoCoords(panoData, depthData, planeData.x1, 0.5);
-
-  });
-  return planes;
-}
-
-function pointFromPanoCoords(panoData, depthData, x, y) {
-  // get depth
-  var panoHeading = -twoPi * panoData.heading / 360.0;
-  var depthX = Math.floor(x * depthData.width);
-  var depthY = Math.floor(y * depthData.height);
-  var depthIndex = depthY * depthData.width + depthX;
-  var depth = depthData.depthMap[depthIndex];
-  if(depth > 100000000) { return null; }
-
-  // get angle
-  var azimuth = (x * twoPi) + panoHeading;
-  var altitude = Math.PI * (0.5 - y);
-  var nx = -Math.cos(azimuth) * Math.cos(altitude);
-  var ny = Math.sin(altitude);
-  var nz = Math.sin(azimuth) * Math.cos(altitude);
-  var n = new THREE.Vector3(nx, ny, nz);
-  n.multiplyScalar(depth);
-  return n;
-}
-
-function pointsFromPanoAndDepth(panoData, depthData) {
-  var panoImage = panoData.canvas;
-  var panoCtx = panoImage.getContext('2d');
-  var panoImageData = panoCtx.getImageData(0, 0, panoImage.width,
-    panoImage.height);
-
-  // beta/lat, lambda/lng
-  var raysLng = 120, raysLat = 60, lngIndex, latIndex;
-  var panoX, panoY, panoIndex, c;
-  var n, points = [];
-  // var lngOffset = twoPi * (-panoData.heading / 360.0);
-  for(lngIndex = 0; lngIndex < raysLng; lngIndex++) {
-    for(latIndex = 1; latIndex <= raysLat * 0.51; latIndex++) {
-      n = pointFromPanoCoords(panoData, depthData,
-        lngIndex / raysLng, latIndex / raysLat);
-      if(!n) { continue; }
-      points.push(n);
-
-      // calculate color
-      panoX = Math.floor(lngIndex * panoImage.width / raysLng);
-      panoY = Math.floor(latIndex * panoImage.height / raysLat);
-      panoIndex = 4 * (panoY * panoImage.width + panoX);
-      n.c = (panoImageData.data[panoIndex] << 16) +
-        (panoImageData.data[panoIndex + 1] << 8) +
-        panoImageData.data[panoIndex + 2];
-    }
-  }
-  return points;
-}
-
 function initScene() {
   // dummy objects
   var originCubeGeometry = new THREE.CubeGeometry(3, 3, 3);
@@ -325,10 +244,10 @@ function offsetForLocation(location) {
   return new THREE.Vector3(northOffset, 0, eastOffset);
 }
 
-function createEnvironment(panoData, depthData) {
+function createEnvironment(pano) {
   // create points
-  var points = pointsFromPanoAndDepth(panoData, depthData);
-  var offset = offsetForLocation(panoData.location.latLng);
+  var points = pano.getPoints();
+  var offset = offsetForLocation(pano.panoData.location.latLng);
   var geom = new THREE.Geometry();
   var geomMaterial = new THREE.MeshLambertMaterial({
     color: 0xffffff, shading: THREE.FlatShading,
@@ -368,7 +287,7 @@ function createEnvironment(panoData, depthData) {
   centerCube.position.copy(offset);
   scene.add(centerCube);
 
-  environments[panoData.panoId] = {
+  environments[pano.panoData.panoId] = {
     geom: geomMesh,
     centerCube: centerCube,
     visible: false
@@ -411,38 +330,16 @@ function render() {
   // requestAnimationFrame(render);
 }
 
-function drawDepthImage(depthData) {
-  var x, y, depthCanvas, depthContext, depthImageData, w, h, c;
-  depthImage = document.createElement("canvas");
-  depthContext = depthImage.getContext('2d');
-  w = depthData.width;
-  h = depthData.height;
-  depthImage.setAttribute('width', w);
-  depthImage.setAttribute('height', h);
-  depthImageData = depthContext.getImageData(0, 0, w, h);
-  for(y=0; y<h; ++y) {
-    for(x=0; x<w; ++x) {
-      c = depthData.depthMap[y*w + x] / 50 * 255;
-      depthImageData.data[4*(y*w + x)  ] = c;
-      depthImageData.data[4*(y*w + x) + 1] = c;
-      depthImageData.data[4*(y*w + x) + 2] = c;
-      depthImageData.data[4*(y*w + x) + 3] = 255;
-    }
-  }
-  depthContext.putImageData(depthImageData, 0, 0);
-  return depthImage;
-}
-
 function createEnvironmentAtLocation(location) {
   // load pano
   var pano = new Pano();
   return pano.load(location).then(function() {
     $("#panoContainer").html(pano.panoData.canvas);
-    var depthImage = drawDepthImage(pano.depthData);
+    var depthImage = pano.getDepthImage();
     $("#depthContainer").html(depthImage);
     // If we already have it loaded, just proceed to showing
     if(!!environments[pano.panoData.panoId]) { return true; }
-    createEnvironment(pano.panoData, pano.depthData);
+    createEnvironment(pano);
   }).then(function() {
     showPano(pano.panoData.panoId);
   });
