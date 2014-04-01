@@ -1,35 +1,54 @@
 <!DOCTYPE html>
 <html> 
 <head> 
-    <meta http-equiv="content-type" content="text/html; charset=UTF-8"/> 
-    <title>Example</title> 
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8"/> 
+  <title>g e o d r o m e</title> 
 
-    <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&amp;sensor=false" type="text/javascript"></script> 
-    
-    <script src="js/rsvp.js" type="text/javascript"></script>
-    <script src="js/jquery.min.js" type="text/javascript"></script>
-    <script src="js/jquery.base64.min.js" type="text/javascript"></script>
-    <script src="js/zpipe.min.js" type="text/javascript"></script>
-    
-    <script src="js/three.js" type="text/javascript"></script>
-    <script src="js/OrbitControls.js" type="text/javascript"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&amp;sensor=false" type="text/javascript"></script> 
+  
+  <script src="js/rsvp.js" type="text/javascript"></script>
+  <script src="js/jquery.min.js" type="text/javascript"></script>
+  <script src="js/jquery.base64.min.js" type="text/javascript"></script>
+  <script src="js/zpipe.min.js" type="text/javascript"></script>
+  
+  <script src="js/three.js" type="text/javascript"></script>
+  <script src="js/OrbitControls.js" type="text/javascript"></script>
 
-    <script src="js/GSVPano.js" type="text/javascript"></script>
-    <script src="js/GSVPanoDepth.js" type="text/javascript"></script>
-    
-    <script src="utils.js" type="text/javascript"></script>
-    <script src="main.js" type="text/javascript"></script>
+  <script src="js/GSVPano.js" type="text/javascript"></script>
+  <script src="js/GSVPanoDepth.js" type="text/javascript"></script>
+  
+  <script src="utils.js" type="text/javascript"></script>
+  <script src="main.js" type="text/javascript"></script>
 
-    <link rel='stylesheet' href='style.css'/>
+  <link rel='stylesheet' href='style.css'/>
 </head> 
 <body>
-    <div id='frame'>
-        <div id='mapContainer'><div id='mapCanvas'></div></div>
-        <div id='renderContainer'></div>
+  <div id='frame'>
+    <div id='mapContainer'>
+
+    <div>
+      <form id='formSearch'>
+        <input type='text' id='txtSearch' placeholder='Zoom to city or address'/>
+      </form>
     </div>
-    <div id='extras'>
-        <div id='panoContainer'></div>
-        <div id='depthContainer'></div>
+
+      <div id='mapCanvas'></div>
+
+      <div id='trackStatus'></div>
+      <div>
+        <label>
+          <input id='checkLoop' type='checkbox' checked='true'/>Loop
+        </label>
+      </div>
+      <button id='btnClear'>Clear</button>
+      <button id='btnGenerate'>Generate</button>
+
     </div>
+    <div id='renderContainer'></div>
+  </div>
+  <div id='extras'>
+    <div id='panoContainer'></div>
+    <div id='depthContainer'></div>
+  </div>
 </body> 
 </html>

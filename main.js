@@ -9,10 +9,16 @@
         \+z=east
 */
 
+// CONSTANTS
+var MIN_ROUTEPOINT_DISTANCE = 15; // meters
+var twoPi = Math.PI * 2;
+
 // MAP INITIALIZATION
-var map, markers = [], waypoints = [], finalRoute = [], routePolyline;
+var map, markers = [], shouldLoop = true, waypoints = [],
+  finalRoute = [], routePolyline;
 var initialPosition = new google.maps.LatLng(42.345601, -71.098348);
 var directionsService = new google.maps.DirectionsService();
+var geocoder = new google.maps.Geocoder();
 
 // RENDERER INITIALIZATION
 var scene, camera, renderer, controls;
@@ -39,11 +45,17 @@ scene.add(light);
 
 // MAP CODE
 
+function initUI() {
+  $("#btnClear").click(onClear);
+  $("#btnGenerate").click(onGenerate);
+  $("#checkLoop").click(onLoop);
+  $("#formSearch, #txtSearch").submit(onSearch);
+}
+
 function initMap() {
   var mapOptions = {
     zoom: 16,
     overviewMapControl: false,
-    zoomControl: false,
     streetViewControl: false,
     center: initialPosition,
     disableDoubleClickZoom: true
@@ -62,9 +74,9 @@ function initMap() {
 }
 
 function initPath(initialPosition) {
+  clearMarkers();
   waypoints = [initialPosition];
   addMarker(initialPosition);
-  waypointsDidChange();
 }
 
 function addMarker(position) {
@@ -93,18 +105,77 @@ function onMarkerClick(e) {
   waypointsDidChange();
 }
 
+function onSearch(e) {
+  var searchText = $("#txtSearch").val();
+  geocoder.geocode({'address': searchText}, function(results, status) {
+    if (status === google.maps.GeocoderStatus.OK) {
+      map.setCenter(results[0].geometry.location);
+      initPath(results[0].geometry.location);
+      $("#txtSearch").val("");
+    } else {
+      console.error("Geocoding failed: " + status);
+    }
+  });
+  e.preventDefault();
+  return false;
+}
+
 function onMarkerDragend(e) {
   var index = markers.indexOf(this);
   waypoints[index] = this.getPosition();
   waypointsDidChange();
 }
 
+function finalizeRoute(route) {
+  var finalizedRoute = [route[0]], i, dist, segs, j;
+  for(i = 1, l = route.length; i < l; i++) {
+    dist = google.maps.geometry.spherical.computeDistanceBetween(
+      route[i-1], route[i]);
+    if(dist > MIN_ROUTEPOINT_DISTANCE) {
+      // distance is greater, so add subdivisions too.
+      segs = Math.ceil(dist / MIN_ROUTEPOINT_DISTANCE);
+      for(j = 1; j < segs; j++) {
+        finalizedRoute.push(google.maps.geometry.spherical.interpolate(
+          route[i-1], route[i], j / segs));
+      }
+    }
+    finalizedRoute.push(route[i]);
+  }
+  return finalizedRoute;
+}
+
 function waypointsDidChange() {
-  getRoute().then(function(route) {
-    finalRoute = route;
+  return getRoute().then(function(route) {
+    finalRoute = finalizeRoute(route);
     routePolyline.setPath(finalRoute);
-    updateScene();
+    $("#trackStatus").html(finalRoute.length + " waypoints.");
   });
+}
+
+function clearMarkers() {
+  markers.forEach(function(marker) {
+    marker.setMap(null);
+  });
+  markers = [];
+}
+
+function clearPath() {
+  clearMarkers();
+  waypoints = [];
+  waypointsDidChange();
+}
+
+function onClear() {
+  clearPath();
+}
+
+function onGenerate() {
+  updateScene();
+}
+
+function onLoop() {
+  shouldLoop = $("#checkLoop").is(":checked");
+  waypointsDidChange();
 }
 
 function getRoute() {
@@ -118,12 +189,13 @@ function getRoute() {
 function fetchDirections() {
   if(waypoints.length === 0) { return RSVP.reject(); }
   if(waypoints.length === 1) { return RSVP.resolve(); }
+  var routeWaypoints = waypoints.slice(0);
+  if(shouldLoop) { routeWaypoints.push(routeWaypoints[0]); }
   var routeRequest = {
-    origin: waypoints[0],
-    destination: waypoints[waypoints.length - 1],
-    waypoints: waypoints.slice(1, waypoints.length - 1).map(function(pos) {
-      return {location: pos, stopover: false};
-    }),
+    origin: routeWaypoints[0],
+    destination: routeWaypoints[routeWaypoints.length - 1],
+    waypoints: routeWaypoints.slice(1, routeWaypoints.length - 1).map(
+      function(pos) {return {location: pos, stopover: false}; }),
     travelMode: google.maps.DirectionsTravelMode.DRIVING
   };
   return new RSVP.Promise(function(resolve, reject) {
@@ -133,7 +205,7 @@ function fetchDirections() {
       } else {
         reject(status);
       }
-    });    
+    });
   });
 }
 
@@ -146,9 +218,58 @@ function initRenderer() {
   camera.lookAt(new THREE.Vector3(0, 0, 0));
 }
 
-var LASER_UNITS = 1;  // each unit of a laser is 1/10 of a meter
+function planesFromPanoAndDepth(panoData, depthData) {
+  var planes = [],
+    depthMap = depthData.depthMap,
+    dm, d0, d1, ym0, ym1, ym, lng0, lng1,
+    x0mid, x1mid;
 
-function pointsFromPanoAndDepth(panoData, depthMap) {
+  ym = 0; // eye level is always at zero.
+
+  depthData.planes.forEach(function(planeData) {
+    // get distance to top (d0), bottom (d1), and eye-level (dm)
+    dm = depthMap[ym * w + x];
+    d0 = depthMap[Math.floor(planeData.x05y0 * h) * w + x];
+    d1 = depthMap[Math.floor(planeData.x05y1 * h) * w + x];
+    // figure out height from eye to top and eye to bottom
+    // if d0 or d1 < dm, then it's higher, so height is positive.
+    // otherwise it's lower than eye level so height is negative.
+    ym0 = Math.sqrt(d0 * d0 - dm * dm) * (d0 < dm ? 1 : -1);
+    ym1 = Math.sqrt(d1 * d1 - dm * dm) * (d1 < dm ? 1 : -1);
+    // y top and y bottom in world coordinates.
+    y0 = ym0 + ym;
+    y1 = ym1 + ym;
+    // now get x
+    lng0 = planeData.x0 * twoPi;
+    lng1 = planeData.x1 * twoPi;
+    x0mid = pointFromPanoCoords(panoData, depthData, planeData.x0, 0.5);
+    x1mid = pointFromPanoCoords(panoData, depthData, planeData.x1, 0.5);
+
+  });
+  return planes;
+}
+
+function pointFromPanoCoords(panoData, depthData, x, y) {
+  // get depth
+  var panoHeading = -twoPi * panoData.heading / 360.0;
+  var depthX = Math.floor(x * depthData.width);
+  var depthY = Math.floor(y * depthData.height);
+  var depthIndex = depthY * depthData.width + depthX;
+  var depth = depthData.depthMap[depthIndex];
+  if(depth > 100000000) { return null; }
+
+  // get angle
+  var azimuth = (x * twoPi) + panoHeading;
+  var altitude = Math.PI * (0.5 - y);
+  var nx = -Math.cos(altitude) * Math.sin(azimuth);
+  var ny = Math.cos(azimuth);
+  var nz = Math.sin(altitude) * Math.sin(azimuth);
+  var n = new THREE.Vector3(nx, ny, nz);
+  n.multiplyScalar(depth);
+  return n;
+}
+
+function pointsFromPanoAndDepth(panoData, depthData) {
   var panoImage = panoData.canvas;
   var panoCtx = panoImage.getContext('2d');
   var panoImageData = panoCtx.getImageData(0, 0, panoImage.width,
@@ -158,10 +279,10 @@ function pointsFromPanoAndDepth(panoData, depthMap) {
   var raysLng = 120, raysLat = 60, lngIndex, latIndex, lat, lng, x, y, z, ym;
   var panoX, panoY, panoIndex, depthX, depthY, c, depth, depthZ;
   var n, points = [], colors = [];
-  var lngOffset = (Math.PI * 2) * (-panoData.heading / 360.0);
+  var lngOffset = twoPi * (-panoData.heading / 360.0);
   for(lngIndex = 0; lngIndex < raysLng; lngIndex++) {
-    lng = lngOffset + (lngIndex * Math.PI * 2 / raysLng);
-    while(lng > Math.PI * 2) { lng -= Math.PI * 2; }
+    lng = lngOffset + (lngIndex * twoPi / raysLng);
+    while(lng > twoPi) { lng -= twoPi; }
     x = -Math.cos(lng);
     z = Math.sin(lng);
     for(latIndex = 1; latIndex <= raysLat * 0.51; latIndex++) {
@@ -172,15 +293,13 @@ function pointsFromPanoAndDepth(panoData, depthMap) {
       n = new THREE.Vector3(x * ym, y, z * ym);
 
       // calculate depth
-      depthX = Math.floor(lngIndex * depthMap.width / raysLng);
-      depthY = Math.floor(latIndex * depthMap.height / raysLat);
-      depthIndex = depthY * depthMap.width + depthX;
-      depthZ = depthMap.depthMap[depthIndex];
+      depthX = Math.floor(lngIndex * depthData.width / raysLng);
+      depthY = Math.floor(latIndex * depthData.height / raysLat);
+      depthIndex = depthY * depthData.width + depthX;
+      depth = depthData.depthMap[depthIndex];
 
-      // end of sky map; doesn't count!
-      // if(depthZ === 255) { continue; }
-
-      depth = depthZ * LASER_UNITS;
+      // sky map; doesn't count!
+      if(depth > 100000000) { continue; }
 
       // final point
       n.multiplyScalar(depth);
@@ -203,9 +322,12 @@ function initScene() {
   // dummy objects
   var originCubeGeometry = new THREE.CubeGeometry(3, 3, 3);
   var originCubeMaterial = new THREE.MeshLambertMaterial({
-    color: 0xffffff, ambient: 0xffffff, shading: THREE.FlatShading});
+    color: 0xffffff,
+    ambient: 0xffffff,
+    shading: THREE.FlatShading
+  });
   var originCube = new THREE.Mesh(originCubeGeometry, originCubeMaterial);
-  scene.add(originCube);  
+  scene.add(originCube);
 }
 
 function clearEnvironment() {
@@ -219,13 +341,12 @@ function offsetForLocation(location) {
   var lngMpd = lngMetersPerDegree(waypoints[0].lat());
   var eastOffset = lngDiff * lngMpd;
   var northOffset = latDiff * latMpd;
-  console.log('lngDiff', lngDiff, 'eastOffset', eastOffset);
   return new THREE.Vector3(northOffset, 0, eastOffset);
 }
 
-function createEnvironment(panoData, depthMap) {
+function createEnvironment(panoData, depthData) {
   // create points
-  var points = pointsFromPanoAndDepth(panoData, depthMap);
+  var points = pointsFromPanoAndDepth(panoData, depthData);
   var offset = offsetForLocation(panoData.location.latLng);
   var geom = new THREE.Geometry();
   var geomMaterial = new THREE.MeshLambertMaterial({
@@ -251,8 +372,8 @@ function createEnvironment(panoData, depthMap) {
     geom.faces.push(new THREE.Face3(i*8+2, i*8+3, i*8+0));
     geom.faces.push(new THREE.Face3(i*8+4+0, i*8+4+1, i*8+4+2));
     geom.faces.push(new THREE.Face3(i*8+4+2, i*8+4+3, i*8+4+0));
-    geom.faces[i*4].vertexColors = geom.faces[i*4+1].vertexColors = 
-      geom.faces[i*4+2].vertexColors = geom.faces[i*4+3].vertexColors = 
+    geom.faces[i*4].vertexColors = geom.faces[i*4+1].vertexColors =
+      geom.faces[i*4+2].vertexColors = geom.faces[i*4+3].vertexColors =
       [color, color, color];
   }
 
@@ -264,7 +385,7 @@ function createEnvironment(panoData, depthMap) {
     color: 0xffffff, ambient: 0xffffff, shading: THREE.FlatShading});
   var centerCube = new THREE.Mesh(cubeGeometry, cubeMaterial);
   centerCube.position.copy(offset);
-  scene.add(centerCube);  
+  scene.add(centerCube);
 
   environments[panoData.panoId] = {
     geom: geomMesh,
@@ -309,25 +430,25 @@ function render() {
   // requestAnimationFrame(render);
 }
 
-function drawDepthMap(depthMap) {
-  var x, y, depthCanvas, depthContext, depthData, w, h, c;
+function drawDepthImage(depthData) {
+  var x, y, depthCanvas, depthContext, depthImageData, w, h, c;
   depthImage = document.createElement("canvas");
   depthContext = depthImage.getContext('2d');
-  w = depthMap.width;
-  h = depthMap.height;
+  w = depthData.width;
+  h = depthData.height;
   depthImage.setAttribute('width', w);
   depthImage.setAttribute('height', h);
-  depthData = depthContext.getImageData(0, 0, w, h);
+  depthImageData = depthContext.getImageData(0, 0, w, h);
   for(y=0; y<h; ++y) {
     for(x=0; x<w; ++x) {
-      c = depthMap.depthMap[y*w + x] / 50 * 255;
-      depthData.data[4*(y*w + x)  ] = c;
-      depthData.data[4*(y*w + x) + 1] = c;
-      depthData.data[4*(y*w + x) + 2] = c;
-      depthData.data[4*(y*w + x) + 3] = 255;
+      c = depthData.depthMap[y*w + x] / 50 * 255;
+      depthImageData.data[4*(y*w + x)  ] = c;
+      depthImageData.data[4*(y*w + x) + 1] = c;
+      depthImageData.data[4*(y*w + x) + 2] = c;
+      depthImageData.data[4*(y*w + x) + 3] = 255;
     }
   }
-  depthContext.putImageData(depthData, 0, 0);
+  depthContext.putImageData(depthImageData, 0, 0);
   return depthImage;
 }
 
@@ -347,6 +468,7 @@ function loadPanoAtLocation(location) {
       });
     };
     panoLoader.onError = function(errorMessage) {
+      console.error(errorMessage);
       reject(errorMessage);
     };
     panoLoader.load(location);
@@ -358,6 +480,10 @@ function loadDepthMap(panoId) {
     var depthLoader = new GSVPANO.PanoDepthLoader();
     depthLoader.onDepthLoad = function() {
       resolve(this.depthMap);
+    };
+    depthLoader.onError = function(errorMessage) {
+      console.error(errorMessage);
+      reject(errorMessage);
     };
     depthLoader.load(panoId);
   });
@@ -373,12 +499,13 @@ function createEnvironmentAtLocation(location) {
     // If we already have it loaded, just proceed to showing
     if(!!environments[panoData.panoId]) { return true; }
     // Otherwise, get the depth map and create the environment.
-    return loadDepthMap(panoData.panoId).then(function(depthMap) {
+    return loadDepthMap(panoData.panoId).then(function(depthData) {
+      console.dir(depthData.planes);
       // draw depth map
-      var depthImage = drawDepthMap(depthMap);
+      var depthImage = drawDepthImage(depthData);
       $("#depthContainer").html(depthImage);
       // and init scene
-      createEnvironment(panoData, depthMap);
+      createEnvironment(panoData, depthData);
     });
   }).then(function() {
     showPano(panoData.panoId);
@@ -389,15 +516,23 @@ function updateScene() {
   hideAllPanos();
   if(waypoints.length === 0) { render(); return RSVP.reject("No waypoints."); }
   var promiseChain = RSVP.resolve();
+  var numErrors = 0;
   finalRoute.forEach(function(location, i) {
     promiseChain = promiseChain.then(function() {
       console.info('rendering ' + (i + 1) + ' / ' + finalRoute.length);
       return createEnvironmentAtLocation(location);
+    }).then(function() {
+      render();
+    }, function(err) {
+      numErrors++;
     });
   });
   promiseChain.then(function() {
-    render();
-    console.info('complete!');
+    if(numErrors) {
+      console.warning(numErrors + ' errors.');
+    } else {
+      console.info('all ok!');
+    }
   }, function(err) {
     console.error(err);
   });
@@ -405,10 +540,14 @@ function updateScene() {
 
 function init() {
   initMap();
+  initUI();
   initPath(initialPosition);
   initRenderer();
   initScene();
   $("#renderContainer").html(renderer.domElement);
+  waypointsDidChange().then(function() {
+    updateScene();
+  });
   update();
 }
 
