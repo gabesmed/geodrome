@@ -6,6 +6,8 @@ var Track = function() {
 
 Track.directionsService = new google.maps.DirectionsService();
 
+Track.MIN_ROUTEPOINT_DISTANCE = 15;
+
 Track.prototype.setWaypoints = function(waypoints) {
   this.waypoints = waypoints;
 };
@@ -24,9 +26,9 @@ Track.prototype.routeFromPath = function(path) {
   for(i = 1, l = path.length; i < l; i++) {
     dist = google.maps.geometry.spherical.computeDistanceBetween(
       path[i-1], path[i]);
-    if(dist > MIN_ROUTEPOINT_DISTANCE) {
+    if(dist > Track.MIN_ROUTEPOINT_DISTANCE) {
       // distance is greater, so add subdivisions too.
-      segs = Math.ceil(dist / MIN_ROUTEPOINT_DISTANCE);
+      segs = Math.ceil(dist / Track.MIN_ROUTEPOINT_DISTANCE);
       for(j = 1; j < segs; j++) {
         route.push(google.maps.geometry.spherical.interpolate(
           path[i-1], path[i], j / segs));
@@ -60,5 +62,28 @@ Track.prototype.fetchDirections = function() {
         reject(status);
       }
     });
+  });
+};
+
+Track.prototype.fetchPanos = function(progressCallback, errorCallback) {
+  var promiseChain = RSVP.resolve();
+  var errors = [], panos = [], self = this;
+  this.route.forEach(function(location, i) {
+    promiseChain = promiseChain.then(function() {
+      console.info('rendering ' + (i + 1) + ' / ' + self.route.length);
+      return new Pano().load(location);
+    }).then(function(pano) {
+      panos.push(pano);
+      errors.push(null);
+      if(progressCallback) { progressCallback(pano, i); }
+    }, function(err) {
+      panos.push(null);
+      errors.push(err);
+      if(errorCallback) { errorCallback(err, i); }
+    });
+  }, this);
+  return promiseChain.then(function() {
+    var numErrors = errors.filter(function(err) { return !!err; }).length;
+    return {panos: panos, errors: errors, numErrors: numErrors};
   });
 };

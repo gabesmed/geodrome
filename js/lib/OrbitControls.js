@@ -305,3 +305,5 @@ THREE.OrbitControls = function ( object, domElement ) {
     this.domElement.addEventListener( 'DOMMouseScroll', onMouseWheel, false ); // firefox
 
 };
+
+THREE.EventDispatcher.prototype.apply(THREE.OrbitControls.prototype);

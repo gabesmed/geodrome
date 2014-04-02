@@ -9,10 +9,6 @@
         \+z=east
 */
 
-// CONSTANTS
-var MIN_ROUTEPOINT_DISTANCE = 15; // meters
-var twoPi = Math.PI * 2;
-
 // MAP INITIALIZATION
 var map, markers = [], routePolyline, track = null;
 var initialPosition = new google.maps.LatLng(42.345601, -71.098348);
@@ -27,11 +23,12 @@ camera = new THREE.PerspectiveCamera(75, sceneWidth / sceneHeight, 0.1, 10000);
 
 renderer = new THREE.WebGLRenderer();
 renderer.setSize(sceneWidth, sceneHeight);
-renderer.domElement.addEventListener( 'mousewheel', function(e) { e.preventDefault(); }, false );
-renderer.domElement.addEventListener( 'DOMMouseScroll', function(e) { e.preventDefault(); }, false );
+renderer.domElement.addEventListener('mousewheel',
+  function(e) { e.preventDefault(); }, false );
+renderer.domElement.addEventListener('DOMMouseScroll',
+  function(e) { e.preventDefault(); }, false );
 
 // CONTROLS
-THREE.EventDispatcher.prototype.apply(THREE.OrbitControls.prototype);
 controls = new THREE.OrbitControls(camera, renderer.domElement);
 controls.addEventListener('change', render);
 
@@ -277,44 +274,32 @@ function render() {
   // requestAnimationFrame(render);
 }
 
-function createEnvironmentAtLocation(location) {
-  // load pano
-  var pano = new Pano();
-  return pano.load(location).then(function() {
+function updateScene() {
+  hideAllPanos();
+  var promiseChain = RSVP.resolve();
+  return track.fetchPanos(function(pano) {
+    // pano loaded
     $("#panoContainer").html(pano.panoData.canvas);
     var depthImage = pano.getDepthImage();
     $("#depthContainer").html(depthImage);
     // If we already have it loaded, just proceed to showing
-    if(!!environments[pano.panoData.panoId]) { return true; }
-    createEnvironment(pano);
-  }).then(function() {
+    if(!environments[pano.panoData.panoId]) {
+      createEnvironment(pano);
+    }
     showPano(pano.panoData.panoId);
-  });
-}
-
-function updateScene() {
-  hideAllPanos();
-  if(track.waypoints.length === 0) {
-    render(); return RSVP.reject("No waypoints."); }
-  var promiseChain = RSVP.resolve();
-  var numErrors = 0;
-  track.route.forEach(function(location, i) {
-    promiseChain = promiseChain.then(function() {
-      console.info('rendering ' + (i + 1) + ' / ' + track.route.length);
-      return createEnvironmentAtLocation(location);
-    }).then(function() {
-      render();
-    }, function(err) {
-      numErrors++;
-    });
-  });
-  promiseChain.then(function() {
-    if(numErrors) {
+    render();
+  }, function(err) {
+    // pano error
+    console.error(err);
+  }).then(function(result) {
+    // all complete
+    if(result.numErrors) {
       console.warning(numErrors + ' errors.');
     } else {
       console.info('all ok!');
     }
   }, function(err) {
+    // overall error
     console.error(err);
   });
 }

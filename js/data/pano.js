@@ -10,6 +10,7 @@ Pano.prototype.load = function(location) {
     return self.fetchDepthMap(panoData.panoId);
   }).then(function(depthData) {
     self.depthData = depthData;
+    return self;
   });
 };
 
@@ -50,6 +51,7 @@ Pano.prototype.fetchDepthMap = function(panoId) {
 
 Pano.prototype.getPoint = function(x, y) {
   // get depth
+  var twoPi = Math.PI * 2;
   var panoHeading = -twoPi * this.panoData.heading / 360.0;
   var depthX = Math.floor(x * this.depthData.width);
   var depthY = Math.floor(y * this.depthData.height);
@@ -69,6 +71,7 @@ Pano.prototype.getPoint = function(x, y) {
 };
 
 Pano.prototype.getPoints = function() {
+  var twoPi = Math.PI * 2;
   var panoImage = this.panoData.canvas;
   var panoCtx = panoImage.getContext('2d');
   var panoImageData = panoCtx.getImageData(0, 0, panoImage.width,
@@ -98,6 +101,7 @@ Pano.prototype.getPoints = function() {
 };
 
 Pano.prototype.getPlanes = function() {
+  var twoPi = Math.PI * 2;
   var planes = [],
     depthMap = this.depthData.depthMap,
     dm, d0, d1, ym0, ym1, ym, lng0, lng1,
