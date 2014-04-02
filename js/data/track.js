@@ -14,6 +14,7 @@ Track.prototype.setWaypoints = function(waypoints) {
 
 Track.prototype.updateRoute = function() {
   var self = this;
+  if(this.waypoints.length === 0) { return RSVP.resolve(); }
   return this.fetchDirections().then(function(response) {
     if(!response) { self.route = self.waypoints; return; }
     var rawPath = response.routes[0].overview_path;

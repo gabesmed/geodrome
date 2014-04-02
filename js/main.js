@@ -10,9 +10,7 @@
 */
 
 // MAP INITIALIZATION
-var map, markers = [], routePolyline, track = null;
-var initialPosition = new google.maps.LatLng(42.345601, -71.098348);
-var geocoder = new google.maps.Geocoder();
+var trackEditor = null, track = null;
 
 // RENDERER INITIALIZATION
 var scene, camera, renderer, controls;
@@ -37,121 +35,6 @@ scene.add(new THREE.AmbientLight(0xcccccc));
 var light = new THREE.DirectionalLight(0xffffff);
 light.position.set(-1, 1, 1).normalize();
 scene.add(light);
-
-// MAP CODE
-
-function initUI() {
-  $("#btnClear").click(onClear);
-  $("#btnGenerate").click(onGenerate);
-  $("#checkLoop").click(onLoop);
-  $("#formSearch, #txtSearch").submit(onSearch);
-}
-
-function initMap() {
-  var mapOptions = {
-    zoom: 16,
-    overviewMapControl: false,
-    streetViewControl: false,
-    center: initialPosition,
-    disableDoubleClickZoom: true
-  };
-  map = new google.maps.Map(document.getElementById('mapCanvas'),
-    mapOptions);
-  google.maps.event.addListener(map, 'click', onMapClick);
-
-  routePolyline = new google.maps.Polyline({
-    map: map, path: [],
-    strokeColor: "#000000",
-    strokeOpacity: 0.5,
-    strokeWeight: 7,
-    clickable: false
-  });
-}
-
-function initPath(initialPosition) {
-  track = new Track();
-  track.setWaypoints([initialPosition]);
-  clearMarkers();
-  addMarker(initialPosition);
-}
-
-function addMarker(position) {
-  var marker = new google.maps.Marker({
-    map: map,
-    draggable: true,
-    position: position
-  });
-  google.maps.event.addListener(marker, 'click', onMarkerClick);
-  google.maps.event.addListener(marker, 'dragend', onMarkerDragend);
-  markers.push(marker);
-}
-
-function onMapClick(e, map) {
-  addMarker(e.latLng);
-  track.waypoints.push(e.latLng);
-  track.updateRoute().then(updateTrackDisplay);
-}
-
-function onMarkerClick(e) {
-  google.maps.event.clearInstanceListeners(this);
-  this.setMap(null);
-  var index = markers.indexOf(this);
-  markers.splice(index, 1);
-  track.waypoints.splice(index, 1);
-  track.updateRoute().then(updateTrackDisplay);
-}
-
-function onSearch(e) {
-  var searchText = $("#txtSearch").val();
-  geocoder.geocode({'address': searchText}, function(results, status) {
-    if (status === google.maps.GeocoderStatus.OK) {
-      map.setCenter(results[0].geometry.location);
-      initPath(results[0].geometry.location);
-      $("#txtSearch").val("");
-    } else {
-      console.error("Geocoding failed: " + status);
-    }
-  });
-  e.preventDefault();
-  return false;
-}
-
-function onMarkerDragend(e) {
-  var index = markers.indexOf(this);
-  track.waypoints[index] = this.getPosition();
-  track.updateRoute().then(updateTrackDisplay);
-}
-
-function updateTrackDisplay() {
-  routePolyline.setPath(track.route);
-  $("#trackStatus").html(track.route.length + " waypoints.");
-}
-
-function clearMarkers() {
-  markers.forEach(function(marker) {
-    marker.setMap(null);
-  });
-  markers = [];
-}
-
-function clearPath() {
-  clearMarkers();
-  track.setWaypoints([]);
-  track.updateRoute().then(updateTrackDisplay);
-}
-
-function onClear() {
-  clearPath();
-}
-
-function onGenerate() {
-  updateScene();
-}
-
-function onLoop() {
-  track.isLoop = $("#checkLoop").is(":checked");
-  track.updateRoute().then(updateTrackDisplay);
-}
 
 // RENDERER CODE
 
@@ -275,6 +158,7 @@ function render() {
 }
 
 function updateScene() {
+  track = trackEditor.track;
   hideAllPanos();
   var promiseChain = RSVP.resolve();
   return track.fetchPanos(function(pano) {
@@ -305,14 +189,17 @@ function updateScene() {
 }
 
 function init() {
-  initMap();
-  initUI();
-  initPath(initialPosition);
   initRenderer();
   initScene();
   $("#renderContainer").html(renderer.domElement);
-  track.updateRoute().then(function() {
-    updateTrackDisplay();
+
+  var initialPath = [new google.maps.LatLng(42.345601, -71.098348)];
+  trackEditor = new TrackEditor('#trackEditorContainer', initialPath[0]);
+  trackEditor.onGenerate = function() {
+    console.log('onGenerate');
+    updateScene();
+  };
+  trackEditor.reset(initialPath).then(function() {
     updateScene();
   });
   update();

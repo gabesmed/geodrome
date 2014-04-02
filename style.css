@@ -2,10 +2,10 @@
     overflow: auto;
 }
 
-#mapContainer { float: left; width: 300px; margin-right: 10px; }
-#formSearch { padding: 4px; }
-#txtSearch { width: 100%; font-size: 18pt; }
-#mapCanvas { height: 300px; width: 300px; }
+#trackEditorContainer { float: left; width: 300px; margin-right: 10px; }
+.form-search { padding: 4px; }
+.txt-search { width: 100%; font-size: 18pt; }
+.map-canvas { height: 300px; width: 300px; }
 
 
 #renderContainer { float: left; width: 800px; height: 600px; }
