@@ -14,9 +14,9 @@ Pano.prototype.load = function(location) {
 };
 
 Pano.prototype.fetchPano = function(location) {
-  var rawPanoData;
-  var panoLoader = new GSVPANO.PanoLoader({zoom: 1});
   return new RSVP.Promise(function(resolve, reject) {
+    var rawPanoData;
+    var panoLoader = new GSVPANO.PanoLoader({zoom: 1});
     panoLoader.onPanoramaData = function(result) { rawPanoData = result; };
     panoLoader.onPanoramaLoad = function() {
       resolve({

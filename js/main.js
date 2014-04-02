@@ -14,10 +14,8 @@ var MIN_ROUTEPOINT_DISTANCE = 15; // meters
 var twoPi = Math.PI * 2;
 
 // MAP INITIALIZATION
-var map, markers = [], shouldLoop = true, waypoints = [],
-  finalRoute = [], routePolyline;
+var map, markers = [], routePolyline, track = null;
 var initialPosition = new google.maps.LatLng(42.345601, -71.098348);
-var directionsService = new google.maps.DirectionsService();
 var geocoder = new google.maps.Geocoder();
 
 // RENDERER INITIALIZATION
@@ -74,8 +72,9 @@ function initMap() {
 }
 
 function initPath(initialPosition) {
+  track = new Track();
+  track.setWaypoints([initialPosition]);
   clearMarkers();
-  waypoints = [initialPosition];
   addMarker(initialPosition);
 }
 
@@ -92,8 +91,8 @@ function addMarker(position) {
 
 function onMapClick(e, map) {
   addMarker(e.latLng);
-  waypoints.push(e.latLng);
-  waypointsDidChange();
+  track.waypoints.push(e.latLng);
+  track.updateRoute().then(updateTrackDisplay);
 }
 
 function onMarkerClick(e) {
@@ -101,8 +100,8 @@ function onMarkerClick(e) {
   this.setMap(null);
   var index = markers.indexOf(this);
   markers.splice(index, 1);
-  waypoints.splice(index, 1);
-  waypointsDidChange();
+  track.waypoints.splice(index, 1);
+  track.updateRoute().then(updateTrackDisplay);
 }
 
 function onSearch(e) {
@@ -122,34 +121,13 @@ function onSearch(e) {
 
 function onMarkerDragend(e) {
   var index = markers.indexOf(this);
-  waypoints[index] = this.getPosition();
-  waypointsDidChange();
+  track.waypoints[index] = this.getPosition();
+  track.updateRoute().then(updateTrackDisplay);
 }
 
-function finalizeRoute(route) {
-  var finalizedRoute = [route[0]], i, dist, segs, j;
-  for(i = 1, l = route.length; i < l; i++) {
-    dist = google.maps.geometry.spherical.computeDistanceBetween(
-      route[i-1], route[i]);
-    if(dist > MIN_ROUTEPOINT_DISTANCE) {
-      // distance is greater, so add subdivisions too.
-      segs = Math.ceil(dist / MIN_ROUTEPOINT_DISTANCE);
-      for(j = 1; j < segs; j++) {
-        finalizedRoute.push(google.maps.geometry.spherical.interpolate(
-          route[i-1], route[i], j / segs));
-      }
-    }
-    finalizedRoute.push(route[i]);
-  }
-  return finalizedRoute;
-}
-
-function waypointsDidChange() {
-  return getRoute().then(function(route) {
-    finalRoute = finalizeRoute(route);
-    routePolyline.setPath(finalRoute);
-    $("#trackStatus").html(finalRoute.length + " waypoints.");
-  });
+function updateTrackDisplay() {
+  routePolyline.setPath(track.route);
+  $("#trackStatus").html(track.route.length + " waypoints.");
 }
 
 function clearMarkers() {
@@ -161,8 +139,8 @@ function clearMarkers() {
 
 function clearPath() {
   clearMarkers();
-  waypoints = [];
-  waypointsDidChange();
+  track.setWaypoints([]);
+  track.updateRoute().then(updateTrackDisplay);
 }
 
 function onClear() {
@@ -174,39 +152,8 @@ function onGenerate() {
 }
 
 function onLoop() {
-  shouldLoop = $("#checkLoop").is(":checked");
-  waypointsDidChange();
-}
-
-function getRoute() {
-  if(waypoints.length === 0) { return RSVP.resolve(waypoints); }
-  if(waypoints.length === 1) { return RSVP.resolve(waypoints); }
-  return fetchDirections().then(function(directionsResponse) {
-    return directionsResponse.routes[0].overview_path;
-  });
-}
-
-function fetchDirections() {
-  if(waypoints.length === 0) { return RSVP.reject(); }
-  if(waypoints.length === 1) { return RSVP.resolve(); }
-  var routeWaypoints = waypoints.slice(0);
-  if(shouldLoop) { routeWaypoints.push(routeWaypoints[0]); }
-  var routeRequest = {
-    origin: routeWaypoints[0],
-    destination: routeWaypoints[routeWaypoints.length - 1],
-    waypoints: routeWaypoints.slice(1, routeWaypoints.length - 1).map(
-      function(pos) {return {location: pos, stopover: false}; }),
-    travelMode: google.maps.DirectionsTravelMode.DRIVING
-  };
-  return new RSVP.Promise(function(resolve, reject) {
-    directionsService.route(routeRequest, function(response, status) {
-      if (status === google.maps.DirectionsStatus.OK) {
-        resolve(response);
-      } else {
-        reject(status);
-      }
-    });
-  });
+  track.isLoop = $("#checkLoop").is(":checked");
+  track.updateRoute().then(updateTrackDisplay);
 }
 
 // RENDERER CODE
@@ -235,10 +182,10 @@ function clearEnvironment() {
 }
 
 function offsetForLocation(location) {
-  var latDiff = location.lat() - waypoints[0].lat();
-  var lngDiff = location.lng() - waypoints[0].lng();
-  var latMpd = latMetersPerDegree(waypoints[0].lat());
-  var lngMpd = lngMetersPerDegree(waypoints[0].lat());
+  var latDiff = location.lat() - track.waypoints[0].lat();
+  var lngDiff = location.lng() - track.waypoints[0].lng();
+  var latMpd = latMetersPerDegree(track.waypoints[0].lat());
+  var lngMpd = lngMetersPerDegree(track.waypoints[0].lat());
   var eastOffset = lngDiff * lngMpd;
   var northOffset = latDiff * latMpd;
   return new THREE.Vector3(northOffset, 0, eastOffset);
@@ -347,12 +294,13 @@ function createEnvironmentAtLocation(location) {
 
 function updateScene() {
   hideAllPanos();
-  if(waypoints.length === 0) { render(); return RSVP.reject("No waypoints."); }
+  if(track.waypoints.length === 0) {
+    render(); return RSVP.reject("No waypoints."); }
   var promiseChain = RSVP.resolve();
   var numErrors = 0;
-  finalRoute.forEach(function(location, i) {
+  track.route.forEach(function(location, i) {
     promiseChain = promiseChain.then(function() {
-      console.info('rendering ' + (i + 1) + ' / ' + finalRoute.length);
+      console.info('rendering ' + (i + 1) + ' / ' + track.route.length);
       return createEnvironmentAtLocation(location);
     }).then(function() {
       render();
@@ -378,7 +326,8 @@ function init() {
   initRenderer();
   initScene();
   $("#renderContainer").html(renderer.domElement);
-  waypointsDidChange().then(function() {
+  track.updateRoute().then(function() {
+    updateTrackDisplay();
     updateScene();
   });
   update();
