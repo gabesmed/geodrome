@@ -41,8 +41,8 @@ GSVPANO.PanoLoader = function (parameters) {
             h = (416 * Math.pow(2, _zoom - 1));
         _canvas.width = w;
         _canvas.height = h;
-        _ctx.translate( _canvas.width, 0);
-        _ctx.scale(-1, 1);
+        _ctx.translate(0, 0);
+        _ctx.scale(1, 1);
     };
 
     this.composeFromTile = function (x, y, texture) {

@@ -121,10 +121,10 @@ GSVPANO.PanoDepthLoader = function (parameters) {
           v[0] *= t;
           v[1] *= t;
           v[2] *= t;
-          depthMap[y*w + (w-x-1)] = Math.sqrt(v[0]*v[0] +
+          depthMap[y * w + x] = Math.sqrt(v[0]*v[0] +
             v[1]*v[1] + v[2]*v[2]);
         } else {
-          depthMap[y*w + (w-x-1)] = 9999999999999999999.0;
+          depthMap[y * w + x] = 9999999999999999999.0;
         }
       }
     }
@@ -132,34 +132,61 @@ GSVPANO.PanoDepthLoader = function (parameters) {
   };
 
   this.annotatePlanes = function(header, indices, planes, depthMap) {
-    var x, y, i, w = header.width, h = header.height,
-      planeIdx, plane, ym = h / 2, d0, dm, d1, hm0, hm1;
+    var x, y, w = header.width, h = header.height,
+      planeIdx, plane, y0, y1;
+    var planeY0, planeY1, planeHeight;
     for(x = 0; x < w; ++x) {
+      planeY0 = {};
+      planeY1 = {};
       for(y = 0; y < h; ++y) {
         // first go through and annotate each plane's left and right bound.
         planeIdx = indices[y * w + x];
         if(planeIdx > 0) {
           plane = planes[planeIdx];
-          if(plane.x0 === undefined) { plane.x0 = plane.x1 = x; }
-          else if(x > plane.x1) { plane.x1 = x; }
+          // save plane heights
+          if(planeY0[planeIdx] === undefined) {
+            planeY0[planeIdx] = planeY1[planeIdx] = y;
+          } else {
+            planeY1[planeIdx] = y;
+          }
+          // get x bounds for plane
+          if(plane.x0 === undefined) {
+            plane.x0 = plane.x1 = x;
+            plane.x0y = plane.x1y = y;
+          } else if(x > plane.x1) {
+            plane.x1 = x;
+            plane.x1y = y;
+            plane.w = x - plane.x0;
+          }
+        }
+      }
+      // store plane height on plane if its' higher than previously stored.
+      for(planeIdx = 1; planeIdx < header.numberOfPlanes; planeIdx++) {
+        plane = planes[planeIdx];
+        if(planeY0[planeIdx] !== undefined) {
+          // we have a width
+          planeHeight = planeY1[planeIdx] - planeY0[planeIdx];
+          if(!plane.hMax || planeHeight > plane.hMax) {
+            plane.hMax = planeHeight;
+            plane.hx = x;
+            plane.hy0 = planeY0[planeIdx];
+            plane.hy1 = planeY1[planeIdx];
+          }
         }
       }
     }
-    for(i = 0; i < header.numberOfPlanes; ++i) {
-      // calculate x midpoint of plane, and get height at midpoint.
-      plane = planes[i];
-      x = plane.x05 = Math.floor((plane.x0 + plane.x1) / 2);
-      plane.x05y0 = plane.x05y1 = null;
-      for(y = 0; y < h; ++y) {
-        if(indices[y * w + x] === i) {
-          if(plane.x05y0 === null) { plane.x05y0 = plane.x05y1 = y; }
-          else { plane.x05y1 = y; }
-        }
-      }
-      // and now normalize for depth map dimensions so that we can calculate
-      // independently of raster image.
-      plane.x0 /= w; plane.x05 /= w; plane.x1 /= w;
-      plane.x05y0 /= h; plane.x05y1 /= h;
+    var ci = 0;
+    _.sortBy(planes, function(p) { return p.x0; }).forEach(function(plane, i) {
+      if(plane.n[2] < -0.95) { plane.ci = -1; return; }
+      plane.ci = ci++;
+    });
+
+    // overview
+    for(planeIdx = 1; planeIdx < header.numberOfPlanes; planeIdx++) {
+      plane = planes[planeIdx];
+      console.log(planeIdx + '.',
+        'x0', plane.x0, plane.x0y, depthMap[plane.x0y * w + plane.x0],
+        'x1', plane.x1, plane.x1y, depthMap[plane.x1y * w + plane.x1]);
     }
   };
 
@@ -174,6 +201,7 @@ GSVPANO.PanoDepthLoader = function (parameters) {
       width: header.width,
       height: header.height,
       depthMap: depthMap,
+      indices: data.indices,
       planes: data.planes
     };
   };

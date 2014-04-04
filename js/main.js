@@ -15,7 +15,7 @@ var trackEditor = null, trackGeom = null;
 // RENDERER INITIALIZATION
 var scene, camera, renderer, controls;
 var environments = {};
-var sceneWidth = 800, sceneHeight = 600;
+var sceneWidth = 800, sceneHeight = 500;
 scene = new THREE.Scene();
 camera = new THREE.PerspectiveCamera(75, sceneWidth / sceneHeight, 0.1, 10000);
 
@@ -72,13 +72,20 @@ function updateScene() {
 
   trackEditor.track.fetchPanos(function(pano) {
     // pano loaded
-    $("#panoContainer").html(pano.panoData.canvas);
-    $("#depthContainer").html(pano.getDepthImage());
-    trackGeom.addPano(pano);
+    try {
+      $("#panoContainer").html(pano.panoData.canvas);
+      $("#depthContainer").html(pano.getDepthImage());
+      $("#planeContainer").html(pano.getPlaneImage());
+      trackGeom.addPano(pano);
+    } catch(err) {
+      console.error(err);
+    }
     render();
   }).then(function(result) {
     if(result.numErrors) { console.warning(numErrors + ' errors.'); }
     else { console.info('all ok!'); }
+  }, function(err) {
+    console.error(err);
   });
 }
 

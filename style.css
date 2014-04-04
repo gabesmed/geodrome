@@ -8,10 +8,10 @@
 .map-canvas { height: 300px; width: 300px; }
 
 
-#renderContainer { float: left; width: 800px; height: 600px; }
+#renderContainer { float: left; width: 800px; }
 
-#extras {
-    margin-top: 10px;
-}
+#extras { margin-top: 10px; }
+#depthContainer { display: none; }
+#panoContainer canvas { max-width: 500px; }
 
 button { font-size: 24pt; line-height: 120%; }
