@@ -86,5 +86,7 @@ Track.prototype.fetchPanos = function(progressCallback, errorCallback) {
   return promiseChain.then(function() {
     var numErrors = errors.filter(function(err) { return !!err; }).length;
     return {panos: panos, errors: errors, numErrors: numErrors};
+  }, function(err) {
+    console.log('error fetching panos', err);
   });
 };

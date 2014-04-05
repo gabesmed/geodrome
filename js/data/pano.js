@@ -129,29 +129,29 @@ Pano.prototype.getPlanePointAtCoord = function(plane, x, y) {
 };
 
 Pano.prototype.getPlanes = function() {
-  var twoPi = Math.PI * 2, planes = [],
+  var twoPi = Math.PI * 2, shards = [],
     w = this.depthData.width,
     h = this.depthData.height, normal, depth,
     t, l, r, b, tl, tr, bl, br,
     lx, lz, rx, rz, ty, by;
   var up = new THREE.Vector3(0, 1, 0);
-  this.depthData.planes.forEach(function(plane, i) {
+  this.depthData.shards.forEach(function(shard, i) {
     if(i === 0) { return; } // null
-    if(!this.includePlane(plane)) { return; } // ground plane
+    if(!this.includeShard(shard)) { return; } // ground shard
 
-    l = this.getPlanePointAtCoord(plane, plane.x0, 127);
-    r = this.getPlanePointAtCoord(plane, plane.x1, 127);
-    t = this.getPlanePointAtCoord(plane, plane.hx, plane.hy0);
-    b = this.getPlanePointAtCoord(plane, plane.hx, plane.hy1);
+    l = this.getPlanePointAtCoord(shard, shard.x0, 127);
+    r = this.getPlanePointAtCoord(shard, shard.x1, 127);
+    t = this.getPlanePointAtCoord(shard, shard.hx, shard.hy0);
+    b = this.getPlanePointAtCoord(shard, shard.hx, shard.hy1);
 
     tl = new THREE.Vector3(l.x, t.y, l.z);
     tr = new THREE.Vector3(r.x, t.y, r.z);
     br = new THREE.Vector3(r.x, b.y, r.z);
     bl = new THREE.Vector3(l.x, b.y, l.z);
 
-    planes.push({ci: plane.ci, rgb: plane.rgb, vertices: [tl, tr, br, bl]});
+    shards.push({ci: shard.ci, rgb: shard.rgb, vertices: [tl, tr, br, bl]});
   }, this);
-  return planes;
+  return shards;
 };
 
 Pano.prototype.getDepthImage = function() {
@@ -182,6 +182,24 @@ Pano.prototype.includePlane = function(plane) {
   return true;
 };
 
+Pano.prototype.includeShard = function(shard) {
+  if(shard.n[2] < -0.95) { return false; }
+  if(!shard.w || shard.w < 5) { return false; }
+  return true;
+};
+
+Pano.prototype.getShard = function(plane, x) {
+  // console.log('plane', plane, x);
+  var shards = [], shard;
+  plane.shards.forEach(function(shardIndex) {
+    shard = this.depthData.shards[shardIndex];
+    if(shard.x0 <= x && shard.x1 >= x) {
+      shards.push(shard);
+    }
+  }, this);
+  return shards[0];
+};
+
 Pano.prototype.getPlaneImage = function() {
   var x, y, ctx, image, imageData, w, h, idx, rgb, plane, yi;
   image = document.createElement("canvas");
@@ -203,18 +221,20 @@ Pano.prototype.getPlaneImage = function() {
       if(idx === 0) {
         rgb = {r: 0, g: 0, b: 0};
       } else {
-        rgb = this.depthData.planes[idx].rgb;
+        shard = this.getShard(this.depthData.planes[idx], x);
+        rgb = shard ? shard.rgb : {r: 120, g: 120, b: 120};
+        // rgb = this.depthData.planes[idx].rgb;
       }
       put(x, y, rgb);
     }
   }
-  for(idx = 1; idx < this.depthData.planes.length; idx++) {
-    y = h - 20 - (idx % 10) * 3;
-    plane = this.depthData.planes[idx];
-    if(!this.includePlane(plane)) { continue; }
-    for(x = plane.x0; x <= plane.x1; x++) {
+  for(idx = 1; idx < this.depthData.shards.length; idx++) {
+    shard = this.depthData.shards[idx];
+    y = h - 20 - (shard.planeIdx % 10) * 3;
+    if(!this.includeShard(shard)) { continue; }
+    for(x = shard.x0; x <= shard.x1; x++) {
       for(yi = 0; yi < 3; yi++) {
-        put(x, y + yi, plane.rgb);
+        put(x, y + yi, shard.rgb);
       }
     }
   }

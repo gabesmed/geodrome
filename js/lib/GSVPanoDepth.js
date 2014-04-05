@@ -128,40 +128,45 @@ GSVPANO.PanoDepthLoader = function (parameters) {
     return depthMap;
   };
 
-  this.annotatePlanes = function(header, indices, planes, depthMap) {
+  this.computeShards = function(header, indices, planes, depthMap) {
     var x, y, w = header.width, h = header.height,
       planeIdx, plane, y0, y1;
     var planeY0, planeY1, planeHeight;
+    var shards = [];
+    // Go through columns from left to right
     for(x = 0; x < w; ++x) {
       planeY0 = {};
       planeY1 = {};
+      // Go through column from top to bottom
       for(y = 0; y < h; ++y) {
-        // first go through and annotate each plane's left and right bound.
         planeIdx = indices[y * w + x];
-        if(planeIdx > 0) {
-          plane = planes[planeIdx];
-          // save plane heights
-          if(planeY0[planeIdx] === undefined) {
-            planeY0[planeIdx] = planeY1[planeIdx] = y;
-          } else {
-            planeY1[planeIdx] = y;
-          }
-          // get x bounds for plane
-          if(plane.x0 === undefined) {
-            plane.x0 = plane.x1 = x;
-            plane.x0y = plane.x1y = y;
-          } else if(x > plane.x1) {
-            plane.x1 = x;
-            plane.x1y = y;
-            plane.w = x - plane.x0;
-          }
+        if(planeIdx === 0) { continue; } // empty
+        plane = planes[planeIdx];
+        if(planeY0[planeIdx] === undefined) {
+          // if plane wasn't previously detected on this column, set
+          // its top and bottom to current position
+          planeY0[planeIdx] = planeY1[planeIdx] = y;
+        } else {
+          // if previously detected, extend y1 to bottom
+          planeY1[planeIdx] = y;
+        }
+        // Extend x bounds for plane
+        if(plane.x0 === undefined) {
+          plane.x0 = plane.x1 = x;
+        } else if(x > plane.x1) {
+          plane.x1 = x;
         }
       }
+      // after going through entire column, look at all planes that had a
+      // presence in this column. If this plane height is higher than any
+      // previous height
       // store plane height on plane if its' higher than previously stored.
       for(planeIdx = 1; planeIdx < header.numberOfPlanes; planeIdx++) {
         plane = planes[planeIdx];
         if(planeY0[planeIdx] !== undefined) {
-          // we have a width
+          // This plane was detected in this column. So re-calculate
+          // the plane height if the current height is higher than that
+          // of any previous column.
           planeHeight = planeY1[planeIdx] - planeY0[planeIdx];
           if(!plane.hMax || planeHeight > plane.hMax) {
             plane.hMax = planeHeight;
@@ -169,52 +174,71 @@ GSVPANO.PanoDepthLoader = function (parameters) {
             plane.hy0 = planeY0[planeIdx];
             plane.hy1 = planeY1[planeIdx];
           }
+        } else if(plane.x0 !== undefined) {
+          // This plane was *not* detected in this column, but WAS previously
+          // detected. Copy to mini-planes array.
+          shards.push({
+            planeIdx: planeIdx,
+            n: plane.n, d: plane.d,
+            x0: plane.x0, x1: plane.x1,
+            hx: plane.hx, hMax: plane.hMax,
+            hy0: plane.hy0, hy1: plane.hy1
+          });
+          // And clear plane history so ready for a fresh shard.
+          delete plane.x0;
+          delete plane.x1;
+          delete plane.hMax;
+          delete plane.hx;
+          delete plane.hy0;
+          delete plane.hy1;
         }
       }
     }
-    var ci = 0;
-    _.sortBy(planes, function(p) { return p.x0; }).forEach(function(plane, i) {
-      if(plane.n[2] < -0.95) {
-        plane.ci = -1; plane.rgb = {r: 120, g: 120, b: 120}; return; }
-      plane.ci = ci++;
-      plane.rgb = hsvToRgb({h: (plane.ci * 0.022), s: 1.0, v: 1.0});
+
+    var ci = 0, rgb;
+    // annotate some more.
+    planes.forEach(function(plane) {
+      plane.w = plane.x1 - plane.x0;
+      plane.rgb = {r: 120, g: 120, b: 120}; // default
+      plane.shards = [];
     });
 
-    console.log(planes.map(function(p) { return p.w; }));
+    // annotate some more.
+    shards.forEach(function(shard, i) {
+      shard.w = shard.x1 - shard.x0;
+      planes[shard.planeIdx].shards.push(i);
+    });
+    // assign colors by x position
+    ci = 0;
+    _.sortBy(shards, function(s) { return s.x0; }).forEach(function(shard) {
+      if(shard.n[2] < -0.95) {
+        rgb = {r: 120, g: 120, b: 120};
+      } else {
+        rgb = hsvToRgb({h: ((ci++) * 0.022), s: 1.0, v: 1.0});
+      }
+      shard.rgb = rgb;
+    });
+    _.sortBy(shards, function(s) { return -s.x0; }).forEach(function(s, i) {
+      planes[s.planeIdx].rgb = s.rgb;
+    });
 
-    // overview
-    for(planeIdx = 1; planeIdx < header.numberOfPlanes; planeIdx++) {
-      plane = planes[planeIdx];
-      console.log(planeIdx + '.',
-        'x0', plane.x0, plane.x0y, depthMap[plane.x0y * w + plane.x0],
-        'x1', plane.x1, plane.x1y, depthMap[plane.x1y * w + plane.x1]);
-    }
+    return shards;
   };
 
   this.parse = function(depthMap) {
-    var depthMapData, header, response, data;
+    var depthMapData, header, response, data, shards;
     depthMapData = new DataView(depthMap.buffer);
     header = this.parseHeader(depthMapData);
     data = this.parsePlanes(header, depthMapData);
     depthMap = this.computeDepthMap(header, data.indices, data.planes);
-    this.annotatePlanes(header, data.indices, data.planes, depthMap);
+    shards = this.computeShards(header, data.indices, data.planes, depthMap);
     return {
       width: header.width,
       height: header.height,
       depthMap: depthMap,
       indices: data.indices,
-      planes: data.planes
+      planes: data.planes,
+      shards: shards
     };
-  };
-
-  this.createEmptyDepthMap = function() {
-    var depthMap = {
-      width: 512,
-      height: 256,
-      depthMap: new Float32Array(512*256)
-    };
-    for(var i=0; i<512*256; ++i)
-      depthMap.depthMap[i] = 9999999999999999999.0;
-    return depthMap;
   };
 };
