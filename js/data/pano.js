@@ -106,7 +106,8 @@ Pano.prototype.getPoints = function() {
       points.push(n);
 
       // calculate color
-      panoX = panoImage.width - Math.floor(lngIndex * panoImage.width / raysLng);
+      panoX = panoImage.width - Math.floor(
+        lngIndex * panoImage.width / raysLng);
       panoY = Math.floor(latIndex * panoImage.height / raysLat);
       panoIndex = 4 * (panoY * panoImage.width + panoX);
       n.c = (panoImageData.data[panoIndex] << 16) +
@@ -165,8 +166,6 @@ Pano.prototype.getShards = function() {
     l = this.getPlanePointAtCoord(shard, shard.x0, 127.5);
     r = this.getPlanePointAtCoord(shard, shard.x1, 127.5);
 
-    var oldUvxs = [], newUvxs = [], oldUvx;
-
     for(colX = 0; colX <= colCount; colX++) {
       colXp = colX / colCount;
       colPos = l.clone().lerp(r, colXp);
@@ -177,21 +176,9 @@ Pano.prototype.getShards = function() {
       phiT = Math.atan(t.y / d);
       phiB = Math.atan(b.y / d);
 
-      oldUvx = (shard.x0 + colXp * shard.w) / w;
-      oldUvxs.push(oldUvx);
-
       colNormal = colPos.clone().normalize(),
-      newUvx = Math.atan2(colNormal.z, colNormal.x) / twoPi + 0.5;
-      console.log(
-        'x', colX,
-        'x0', shard.x0 / w,
-        'x1', shard.x1 / w,
-        'xp', colXp,
-        'oldUvx', oldUvx,
-        'newUvx', newUvx);
-      newUvxs.push(newUvx);
-
-      uvx = oldUvx;
+      uvx = Math.atan2(colNormal.z, colNormal.x) / twoPi;
+      if(uvx < 0) { uvx += 1; }
 
       uvy0 = (phiT / Math.PI) + 0.5;
       uvy1 = (phiB / Math.PI) + 0.5;
@@ -200,15 +187,6 @@ Pano.prototype.getShards = function() {
       vertices.push(colTop, colBottom);
       uv.push(uvt, uvb);
     }
-
-    console.log('shard', i, '       old', oldUvxs.map(function(u) {
-      return u.toFixed(2);
-    }).join(','));
-
-    console.log('shard', i, '-> new-uvx', newUvxs.map(function(u) {
-      return u.toFixed(2);
-    }).join(','));
-
     shards.push({
       ci: shard.ci, rgb: shard.rgb,
       numStripes: colCount, vertices: vertices, uv: uv
