@@ -148,12 +148,16 @@ Pano.prototype.getShards = function() {
     colTop, colBottom, colNormal,
     pointPhi, uvy, uv;
 
+  var colsPerQuarter = 20;
+  var rowsPerHalf = 16;
+
   var up = new THREE.Vector3(0, 1, 0);
   this.depthData.shards.forEach(function(shard, i) {
     if(i === 0) { return; } // null
     if(!this.includeShard(shard)) { return; } // ground shard
 
-    cols = 4; rows = 1;
+    cols = Math.ceil(shard.w / (w / 4) * colsPerQuarter);
+    rows = Math.ceil(shard.hMax / h * rowsPerHalf);
     vertices = [];
     uvs = [];
 
@@ -176,7 +180,7 @@ Pano.prototype.getShards = function() {
       for(row = 0; row <= rows; row++) {
         pointY = shardTop.y - shardHeight * (row / rows);
         pointPos = new THREE.Vector3(colPos.x, pointY, colPos.z);
-        pointPhi = Math.atan(pointPos.y / colDepth);
+        pointPhi = Math.atan(pointY / colDepth);
 
         uvy = (pointPhi / Math.PI) + 0.5;
         uv = new THREE.Vector2(uvx, uvy);
@@ -186,7 +190,7 @@ Pano.prototype.getShards = function() {
     }
     shards.push({
       ci: shard.ci, rgb: shard.rgb,
-      cols: cols, rows: 1,
+      cols: cols, rows: rows,
       vertices: vertices, uvs: uvs
     });
   }, this);
