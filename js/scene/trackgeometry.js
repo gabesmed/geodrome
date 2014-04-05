@@ -24,34 +24,34 @@ TrackGeometry.prototype.addPano = function(pano) {
     vertexColors: THREE.VertexColors,
     side: THREE.DoubleSide});
 
-  // create points
-  var point, color, i, l;
-  var points = pano.getPoints();
-  for(i = 0, l = points.length; i < l; i++) {
-    point = points[i].clone().add(trackOffset);
-    pointsGeom.vertices.push(
-      new THREE.Vector3(point.x, point.y - 0.3, point.z - 0.3),
-      new THREE.Vector3(point.x, point.y + 0.3, point.z - 0.3),
-      new THREE.Vector3(point.x, point.y + 0.3, point.z + 0.3),
-      new THREE.Vector3(point.x, point.y - 0.3, point.z + 0.3),
-      new THREE.Vector3(point.x - 0.3, point.y - 0.3, point.z),
-      new THREE.Vector3(point.x - 0.3, point.y + 0.3, point.z),
-      new THREE.Vector3(point.x + 0.3, point.y + 0.3, point.z),
-      new THREE.Vector3(point.x + 0.3, point.y - 0.3, point.z));
-    color = new THREE.Color(points[i].c);
-    pointsGeom.faces.push(
-      new THREE.Face3(i*8+0, i*8+1, i*8+2),
-      new THREE.Face3(i*8+2, i*8+3, i*8+0),
-      new THREE.Face3(i*8+4+0, i*8+4+1, i*8+4+2),
-      new THREE.Face3(i*8+4+2, i*8+4+3, i*8+4+0));
-    pointsGeom.faces[i*4].vertexColors =
-      pointsGeom.faces[i*4+1].vertexColors =
-      pointsGeom.faces[i*4+2].vertexColors =
-      pointsGeom.faces[i*4+3].vertexColors =
-      [color, color, color];
-  }
-  var pointsMesh = new THREE.Mesh(pointsGeom, pointsMaterial);
-  this.add(pointsMesh);
+  // // create points
+  // var point, color, i, l;
+  // var points = pano.getPoints();
+  // for(i = 0, l = points.length; i < l; i++) {
+  //   point = points[i].clone().add(trackOffset);
+  //   pointsGeom.vertices.push(
+  //     new THREE.Vector3(point.x, point.y - 0.3, point.z - 0.3),
+  //     new THREE.Vector3(point.x, point.y + 0.3, point.z - 0.3),
+  //     new THREE.Vector3(point.x, point.y + 0.3, point.z + 0.3),
+  //     new THREE.Vector3(point.x, point.y - 0.3, point.z + 0.3),
+  //     new THREE.Vector3(point.x - 0.3, point.y - 0.3, point.z),
+  //     new THREE.Vector3(point.x - 0.3, point.y + 0.3, point.z),
+  //     new THREE.Vector3(point.x + 0.3, point.y + 0.3, point.z),
+  //     new THREE.Vector3(point.x + 0.3, point.y - 0.3, point.z));
+  //   color = new THREE.Color(points[i].c);
+  //   pointsGeom.faces.push(
+  //     new THREE.Face3(i*8+0, i*8+1, i*8+2),
+  //     new THREE.Face3(i*8+2, i*8+3, i*8+0),
+  //     new THREE.Face3(i*8+4+0, i*8+4+1, i*8+4+2),
+  //     new THREE.Face3(i*8+4+2, i*8+4+3, i*8+4+0));
+  //   pointsGeom.faces[i*4].vertexColors =
+  //     pointsGeom.faces[i*4+1].vertexColors =
+  //     pointsGeom.faces[i*4+2].vertexColors =
+  //     pointsGeom.faces[i*4+3].vertexColors =
+  //     [color, color, color];
+  // }
+  // var pointsMesh = new THREE.Mesh(pointsGeom, pointsMaterial);
+  // this.add(pointsMesh);
 
   // create planes
 
@@ -73,12 +73,8 @@ TrackGeometry.prototype.addPano = function(pano) {
       new THREE.Face3(i*4+0, i*4+1, i*4+2),
       new THREE.Face3(i*4+2, i*4+3, i*4+0));
     planesGeom.faceVertexUvs[0].push(
-      [new THREE.Vector2(0, 1),
-        new THREE.Vector2(1, 1),
-        new THREE.Vector2(1, 0)],
-      [new THREE.Vector2(1, 0),
-        new THREE.Vector2(0, 0),
-        new THREE.Vector2(0, 1)]);
+      [plane.uv[1], plane.uv[2], plane.uv[3]],
+      [plane.uv[3], plane.uv[0], plane.uv[1]]);
   }
   var planesMesh = new THREE.Mesh(planesGeom, planesMaterial);
   this.add(planesMesh);

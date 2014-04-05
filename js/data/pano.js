@@ -133,7 +133,8 @@ Pano.prototype.getPlanes = function() {
     w = this.depthData.width,
     h = this.depthData.height, normal, depth,
     t, l, r, b, tl, tr, bl, br,
-    lx, lz, rx, rz, ty, by;
+    uvx0, uvx1, uvy0, uvy1,
+    uvtl, uvtr, uvbr, uvbl;
   var up = new THREE.Vector3(0, 1, 0);
   this.depthData.shards.forEach(function(shard, i) {
     if(i === 0) { return; } // null
@@ -149,7 +150,21 @@ Pano.prototype.getPlanes = function() {
     br = new THREE.Vector3(r.x, b.y, r.z);
     bl = new THREE.Vector3(l.x, b.y, l.z);
 
-    shards.push({ci: shard.ci, rgb: shard.rgb, vertices: [tl, tr, br, bl]});
+    uvx0 = shard.x0 / w;
+    uvx1 = shard.x1 / w;
+    uvy0 = 1 - shard.hy0 / h;
+    uvy1 = 1 - shard.hy1 / h;
+
+    uvtl = new THREE.Vector2(uvx0, uvy1);
+    uvtr = new THREE.Vector2(uvx0, uvy0);
+    uvbr = new THREE.Vector2(uvx1, uvy0);
+    uvbl = new THREE.Vector2(uvx1, uvy1);
+
+    shards.push({
+      ci: shard.ci, rgb: shard.rgb,
+      vertices: [tl, tr, br, bl],
+      uv: [uvtl, uvtr, uvbr, uvbl]
+    });
   }, this);
   return shards;
 };
