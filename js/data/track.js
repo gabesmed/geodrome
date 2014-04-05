@@ -1,6 +1,6 @@
 var Track = function() {
   this.waypoints = [];
-  this.isLoop = true;
+  this.isLoop = false;
   this.route = [];
 };
 

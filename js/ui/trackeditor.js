@@ -73,7 +73,7 @@ TrackEditor.prototype.onMarkerClick = function(e, marker) {
 
 TrackEditor.prototype.onMarkerDragend = function(e, marker) {
   var index = this.markers.indexOf(marker);
-  this.track.waypoints[index] = this.getPosition();
+  this.track.waypoints[index] = marker.getPosition();
   this.onWaypointsChanged();
 };
 

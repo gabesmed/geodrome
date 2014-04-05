@@ -54,30 +54,31 @@ TrackGeometry.prototype.addPano = function(pano) {
   this.add(pointsMesh);
 
   // create planes
-  var plane, planes = pano.getPlanes();
-  var planesGeom = new THREE.Geometry();
-  var planesMaterial = new THREE.MeshLambertMaterial({
-    color: 0xffffff, vertexColors: THREE.VertexColors,
-    shading: THREE.FlatShading, side: THREE.DoubleSide});
 
-  for(i = 0, l = planes.length; i < l; i++) {
-    plane = planes[i];
-    planesGeom.vertices.push(
-      plane.vertices[0].clone().add(trackOffset),
-      plane.vertices[1].clone().add(trackOffset),
-      plane.vertices[2].clone().add(trackOffset),
-      plane.vertices[3].clone().add(trackOffset));
-    planesGeom.faces.push(
-      new THREE.Face3(i*4+0, i*4+1, i*4+2),
-      new THREE.Face3(i*4+2, i*4+3, i*4+0));
-    color = new THREE.Color((plane.rgb.r << 16) +
-      (plane.rgb.g << 8) + plane.rgb.b);
-    planesGeom.faces[i*2].vertexColors =
-      planesGeom.faces[i*2+1].vertexColors =
-      [color, color, color];
-  }
-  var planesMesh = new THREE.Mesh(planesGeom, planesMaterial);
-  this.add(planesMesh);
+  // var plane, planes = pano.getPlanes();
+  // var planesGeom = new THREE.Geometry();
+  // var planesMaterial = new THREE.MeshLambertMaterial({
+  //   color: 0xffffff, vertexColors: THREE.VertexColors,
+  //   shading: THREE.FlatShading, side: THREE.DoubleSide});
+
+  // for(i = 0, l = planes.length; i < l; i++) {
+  //   plane = planes[i];
+  //   planesGeom.vertices.push(
+  //     plane.vertices[0].clone().add(trackOffset),
+  //     plane.vertices[1].clone().add(trackOffset),
+  //     plane.vertices[2].clone().add(trackOffset),
+  //     plane.vertices[3].clone().add(trackOffset));
+  //   planesGeom.faces.push(
+  //     new THREE.Face3(i*4+0, i*4+1, i*4+2),
+  //     new THREE.Face3(i*4+2, i*4+3, i*4+0));
+  //   color = new THREE.Color((plane.rgb.r << 16) +
+  //     (plane.rgb.g << 8) + plane.rgb.b);
+  //   planesGeom.faces[i*2].vertexColors =
+  //     planesGeom.faces[i*2+1].vertexColors =
+  //     [color, color, color];
+  // }
+  // var planesMesh = new THREE.Mesh(planesGeom, planesMaterial);
+  // this.add(planesMesh);
 
   // create center cube
   var cubeGeometry = new THREE.CubeGeometry(1, 1, 1);

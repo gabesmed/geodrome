@@ -90,7 +90,7 @@ Pano.prototype.getPoints = function() {
   var n, points = [];
   // var lngOffset = twoPi * (-this.panoData.heading / 360.0);
   for(lngIndex = 0; lngIndex < raysLng; lngIndex++) {
-    for(latIndex = 1; latIndex <= raysLat * 0.81; latIndex++) {
+    for(latIndex = 1; latIndex <= raysLat * 0.51; latIndex++) {
       n = this.getPoint(lngIndex / raysLng, latIndex / raysLat, false);
       if(!n) { continue; }
       points.push(n);
