@@ -143,7 +143,7 @@ Pano.prototype.getShards = function() {
   var twoPi = Math.PI * 2, shards = [],
     w = this.depthData.width,
     h = this.depthData.height, normal, depth,
-    l, r, t, b, d, colX, colPos, colCount, vertices, uvx, colXp,
+    l, r, t, b, d, colX, colPos, cols, vertices, uvx, colXp,
     colTop, colBottom, colNormal,
     phiT, phiB, uvy0, uvy1, uvt, uvb;
 
@@ -156,18 +156,17 @@ Pano.prototype.getShards = function() {
     if(i === 0) { return; } // null
     if(!this.includeShard(shard)) { return; } // ground shard
 
-    // colCount = Math.ceil(shard.w / 0.05);
-    colCount = 16;
+    cols = 4;
     vertices = [];
-    uv = [];
+    uvs = [];
 
     t = this.getPlanePointAtCoord(shard, shard.hx, shard.hy0);
     b = this.getPlanePointAtCoord(shard, shard.hx, shard.hy1);
     l = this.getPlanePointAtCoord(shard, shard.x0, 127.5);
     r = this.getPlanePointAtCoord(shard, shard.x1, 127.5);
 
-    for(colX = 0; colX <= colCount; colX++) {
-      colXp = colX / colCount;
+    for(colX = 0; colX <= cols; colX++) {
+      colXp = colX / cols;
       colPos = l.clone().lerp(r, colXp);
       colTop = new THREE.Vector3(colPos.x, t.y, colPos.z);
       colBottom = new THREE.Vector3(colPos.x, b.y, colPos.z);
@@ -185,11 +184,12 @@ Pano.prototype.getShards = function() {
       uvt = new THREE.Vector2(uvx, uvy0);
       uvb = new THREE.Vector2(uvx, uvy1);
       vertices.push(colTop, colBottom);
-      uv.push(uvt, uvb);
+      uvs.push(uvt, uvb);
     }
     shards.push({
       ci: shard.ci, rgb: shard.rgb,
-      numStripes: colCount, vertices: vertices, uv: uv
+      cols: cols, rows: 1,
+      vertices: vertices, uvs: uvs
     });
   }, this);
   return shards;

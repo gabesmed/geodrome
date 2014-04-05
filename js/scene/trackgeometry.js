@@ -61,7 +61,7 @@ TrackGeometry.prototype.addPano = function(pano) {
 
   // create planes
 
-  var shard, shards = pano.getShards(), si, sv0;
+  var shard, shards = pano.getShards(), col, row, lastVertex, vs;
   var shardsGeom = new THREE.Geometry();
   var texture = new THREE.Texture(pano.panoData.canvas);
   var shardsMaterial = new THREE.MeshBasicMaterial({
@@ -74,23 +74,31 @@ TrackGeometry.prototype.addPano = function(pano) {
 
   for(i = 0, l = shards.length; i < l; i++) {
     shard = shards[i];
-    for(si = 0; si < shard.numStripes; si++) {
-      sv0 = shardsGeom.vertices.length;
-      shardsGeom.vertices.push(
-        shard.vertices[si * 2 + 0].clone().add(trackOffset),
-        shard.vertices[si * 2 + 2].clone().add(trackOffset),
-        shard.vertices[si * 2 + 3].clone().add(trackOffset),
-        shard.vertices[si * 2 + 1].clone().add(trackOffset));
-      shardsGeom.faces.push(
-        new THREE.Face3(sv0 + 0, sv0 + 1, sv0 + 2),
-        new THREE.Face3(sv0 + 2, sv0 + 3, sv0 + 0));
-      shardsGeom.faceVertexUvs[0].push(
-        [shard.uv[si * 2 + 0], shard.uv[si * 2 + 2], shard.uv[si * 2 + 3]],
-        [shard.uv[si * 2 + 3], shard.uv[si * 2 + 1], shard.uv[si * 2 + 0]]);
+    for(row = 0; row < shard.rows; row++) {
+      for(col = 0; col < shard.cols; col++) {
+        vs = [
+          (col + 0) * (shard.rows + 1) + row + 0,
+          (col + 1) * (shard.rows + 1) + row + 0,
+          (col + 1) * (shard.rows + 1) + row + 1,
+          (col + 0) * (shard.rows + 1) + row + 1];
+        lastVertex = shardsGeom.vertices.length;
+        shardsGeom.vertices.push(
+          shard.vertices[vs[0]],
+          shard.vertices[vs[1]],
+          shard.vertices[vs[2]],
+          shard.vertices[vs[3]]);
+        shardsGeom.faces.push(
+          new THREE.Face3(lastVertex + 0, lastVertex + 1, lastVertex + 2),
+          new THREE.Face3(lastVertex + 2, lastVertex + 3, lastVertex + 0));
+        shardsGeom.faceVertexUvs[0].push(
+          [shard.uvs[vs[0]], shard.uvs[vs[1]], shard.uvs[vs[2]]],
+          [shard.uvs[vs[2]], shard.uvs[vs[3]], shard.uvs[vs[0]]]);
+      }
     }
   }
   var shardsMesh = new THREE.Mesh(shardsGeom, shardsMaterial);
   shardsMesh.setRotationFromAxisAngle(up, panoHeading);
+  shardsMesh.position = trackOffset;
   this.add(shardsMesh);
 
   // create center cube
