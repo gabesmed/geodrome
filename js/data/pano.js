@@ -1,3 +1,14 @@
+/*
+    +y=up
+      |   +x=north
+      |  /
+      | /
+      |/
+      \
+       \
+        \+z=east
+*/
+
 var Pano = function() {
   this.panoData = null;
   this.depthData = null;
@@ -132,7 +143,7 @@ Pano.prototype.getShards = function() {
   var twoPi = Math.PI * 2, shards = [],
     w = this.depthData.width,
     h = this.depthData.height, normal, depth,
-    l, r, t, b, d, colIndexX, colX, colCount, vertices, uvx, colXp,
+    l, r, t, b, d, colX, colPos, colCount, vertices, uvx, colXp,
     colTop, colBottom, colNormal,
     phiT, phiB, uvy0, uvy1, uvt, uvb;
 
@@ -145,27 +156,44 @@ Pano.prototype.getShards = function() {
     if(i === 0) { return; } // null
     if(!this.includeShard(shard)) { return; } // ground shard
 
-    // numStripes = Math.ceil(shard.w / 0.05);
+    // colCount = Math.ceil(shard.w / 0.05);
     colCount = 16;
     vertices = [];
     uv = [];
 
     t = this.getPlanePointAtCoord(shard, shard.hx, shard.hy0);
     b = this.getPlanePointAtCoord(shard, shard.hx, shard.hy1);
-    l = this.getPlanePointAtCoord(shard, shard.x0, 127);
-    r = this.getPlanePointAtCoord(shard, shard.x1, 127);
+    l = this.getPlanePointAtCoord(shard, shard.x0, 127.5);
+    r = this.getPlanePointAtCoord(shard, shard.x1, 127.5);
 
-    for(colIndexX = 0; colIndexX <= colCount; colIndexX++) {
-      colXp = colIndexX / colCount;
-      colX = l.clone().lerp(r, colXp);
-      colTop = new THREE.Vector3(colX.x, t.y, colX.z);
-      colBottom = new THREE.Vector3(colX.x, b.y, colX.z);
-      d = colX.length();
+    var oldUvxs = [], newUvxs = [], oldUvx;
+
+    for(colX = 0; colX <= colCount; colX++) {
+      colXp = colX / colCount;
+      colPos = l.clone().lerp(r, colXp);
+      colTop = new THREE.Vector3(colPos.x, t.y, colPos.z);
+      colBottom = new THREE.Vector3(colPos.x, b.y, colPos.z);
+
+      d = colPos.length();
       phiT = Math.atan(t.y / d);
       phiB = Math.atan(b.y / d);
-      colNormal = colX.clone().normalize(),
-      // uvx = 0.5 - (Math.atan2(colNormal.x, colNormal.y) / twoPi);
-      uvx = (shard.x0 + colXp * shard.w) / w;
+
+      oldUvx = (shard.x0 + colXp * shard.w) / w;
+      oldUvxs.push(oldUvx);
+
+      colNormal = colPos.clone().normalize(),
+      newUvx = Math.atan2(colNormal.z, colNormal.x) / twoPi + 0.5;
+      console.log(
+        'x', colX,
+        'x0', shard.x0 / w,
+        'x1', shard.x1 / w,
+        'xp', colXp,
+        'oldUvx', oldUvx,
+        'newUvx', newUvx);
+      newUvxs.push(newUvx);
+
+      uvx = oldUvx;
+
       uvy0 = (phiT / Math.PI) + 0.5;
       uvy1 = (phiB / Math.PI) + 0.5;
       uvt = new THREE.Vector2(uvx, uvy0);
@@ -173,6 +201,14 @@ Pano.prototype.getShards = function() {
       vertices.push(colTop, colBottom);
       uv.push(uvt, uvb);
     }
+
+    console.log('shard', i, '       old', oldUvxs.map(function(u) {
+      return u.toFixed(2);
+    }).join(','));
+
+    console.log('shard', i, '-> new-uvx', newUvxs.map(function(u) {
+      return u.toFixed(2);
+    }).join(','));
 
     shards.push({
       ci: shard.ci, rgb: shard.rgb,

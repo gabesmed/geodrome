@@ -1,14 +1,3 @@
-/*
-    +y=up
-      |   +x=north
-      |  /
-      | /
-      |/
-      \
-       \
-        \+z=east
-*/
-
 // MAP INITIALIZATION
 var trackEditor = null, trackGeom = null;
 

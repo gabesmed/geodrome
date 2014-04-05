@@ -86,6 +86,11 @@ TrackGeometry.prototype.addPano = function(pano) {
     }
   }
   var shardsMesh = new THREE.Mesh(shardsGeom, shardsMaterial);
+
+  // var up = new THREE.Vector3(0, 1, 0);
+  // var panoHeading = -twoPi * this.panoData.heading / 360.0 + Math.PI;
+  // shardsMesh.setRotationFromAxisAngle(up, panoHeading);
+
   this.add(shardsMesh);
 
   // create center cube
