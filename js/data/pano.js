@@ -132,7 +132,7 @@ Pano.prototype.getPlanes = function() {
   var twoPi = Math.PI * 2, shards = [],
     w = this.depthData.width,
     h = this.depthData.height, normal, depth,
-    t, l, r, b, tl, tr, bl, br, dl, dr, ht, hb, phi0t, phi0b, phi1t, phi1b,
+    t, l, r, b, tl, tr, bl, br, dl, dr, phi0t, phi0b, phi1t, phi1b,
     uvx0, uvx1, uvx0y0, uvx0y1, uvx1y0, uvx1y1,
     uvtl, uvtr, uvbr, uvbl;
   var up = new THREE.Vector3(0, 1, 0);
@@ -152,33 +152,19 @@ Pano.prototype.getPlanes = function() {
 
     dl = l.length(),
     dr = r.length(),
-    ht = t.y,
-    hb = b.y;
-    phi0t  = Math.atan(ht / dl);
-    phi0b  = Math.atan(hb / dl);
-    phi1t  = Math.atan(ht / dr);
-    phi1b  = Math.atan(hb / dr);
+    phi0t  = Math.atan(t.y / dl);
+    phi0b  = Math.atan(b.y / dl);
+    phi1t  = Math.atan(t.y / dr);
+    phi1b  = Math.atan(b.y / dr);
 
-    // y 1 is top 0 is bototm
     uvx0 = shard.x0 / w;
     uvx1 = shard.x1 / w;
 
+    // y 1 is top 0 is bototm
     uvx0y0 = (phi0t / Math.PI) + 0.5;
     uvx0y1 = (phi0b / Math.PI) + 0.5;
     uvx1y0 = (phi1t / Math.PI) + 0.5;
     uvx1y1 = (phi1b / Math.PI) + 0.5;
-
-    console.log(
-      'dl', dl, 'dr', dr,
-      'phi0t', phi0t, 'uvx0y0', uvx0y0,
-      'phi0b', phi0b, 'uvx0y1', uvx0y1,
-      'phi1t', phi1t,
-      'phi1b', phi1b);
-
-    // uvx0y0 = 1; // phi0t;
-    // uvx0y1 = 0; // phi0b;
-    // uvx1y0 = 1; // phi1t;
-    // uvx1y1 = 0; // phi1b;
 
     uvtl = new THREE.Vector2(uvx0, uvx0y0);
     uvtr = new THREE.Vector2(uvx1, uvx1y0);
