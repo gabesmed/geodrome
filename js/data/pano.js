@@ -68,8 +68,7 @@ Pano.prototype.getDepth = function(depthX, depthY) {
 Pano.prototype.getNormal = function(x, y, isPixelCoords) {
   if(isPixelCoords) { x /= this.depthData.width; y /= this.depthData.height; }
   var twoPi = Math.PI * 2;
-  var panoHeading = -twoPi * this.panoData.heading / 360.0;
-  var azimuth = (x * twoPi) + panoHeading;
+  var azimuth = ((x + 0.5) * twoPi);
   var altitude = Math.PI * (0.5 - y);
   var nx = -Math.cos(azimuth) * Math.cos(altitude);
   var ny = Math.sin(altitude);
@@ -124,7 +123,7 @@ Pano.prototype.getPlanePointAtCoord = function(plane, x, y) {
   var up = new THREE.Vector3(0, 1, 0);
   var phi = (w - x - 1) / (w - 1) * 2 * Math.PI + Math.PI/2;
   var theta = (h - y - 1) / (h - 1) * Math.PI;
-  var panoHeading = -twoPi * this.panoData.heading / 360.0;
+  // var panoHeading = -twoPi * this.panoData.heading / 360.0;
   var v = [
     Math.sin(theta) * Math.cos(phi),
     Math.sin(theta) * Math.sin(phi),
@@ -134,7 +133,7 @@ Pano.prototype.getPlanePointAtCoord = function(plane, x, y) {
   var vt = [v[0] * t, v[1] * t, v[2] * t];
   var d = Math.sqrt(vt[0]*vt[0] + vt[1]*vt[1] + vt[2]*vt[2]);
   var r = new THREE.Vector3(v[1], -v[2], v[0])
-    .applyAxisAngle(up, Math.PI + panoHeading)
+    // .applyAxisAngle(up, Math.PI + panoHeading)
     .multiplyScalar(d);
   return r;
 };

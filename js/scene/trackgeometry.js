@@ -20,14 +20,17 @@ TrackGeometry.prototype.addPano = function(pano) {
   var i, s;
   var trackOffset = this.offsetForLocation(pano.panoData.location.latLng);
 
-  // var pointsGeom = new THREE.Geometry();
-  // var pointsMaterial = new THREE.MeshLambertMaterial({
-  //   color: 0xffffff, shading: THREE.FlatShading,
-  //   vertexColors: THREE.VertexColors,
-  //   side: THREE.DoubleSide});
+  var up = new THREE.Vector3(0, 1, 0);
+  var panoHeading = ((-pano.panoData.heading / 180.0) + 1) * Math.PI;
 
-  // // create points
-  // var point, color, i, l;
+  var pointsGeom = new THREE.Geometry();
+  var pointsMaterial = new THREE.MeshLambertMaterial({
+    color: 0xffffff, shading: THREE.FlatShading,
+    vertexColors: THREE.VertexColors,
+    side: THREE.DoubleSide});
+
+  // create points
+  // var point, color, l;
   // var points = pano.getPoints();
   // for(i = 0, l = points.length; i < l; i++) {
   //   point = points[i].clone().add(trackOffset);
@@ -53,6 +56,7 @@ TrackGeometry.prototype.addPano = function(pano) {
   //     [color, color, color];
   // }
   // var pointsMesh = new THREE.Mesh(pointsGeom, pointsMaterial);
+  // pointsMesh.setRotationFromAxisAngle(up, panoHeading);
   // this.add(pointsMesh);
 
   // create planes
@@ -86,11 +90,7 @@ TrackGeometry.prototype.addPano = function(pano) {
     }
   }
   var shardsMesh = new THREE.Mesh(shardsGeom, shardsMaterial);
-
-  // var up = new THREE.Vector3(0, 1, 0);
-  // var panoHeading = -twoPi * this.panoData.heading / 360.0 + Math.PI;
-  // shardsMesh.setRotationFromAxisAngle(up, panoHeading);
-
+  shardsMesh.setRotationFromAxisAngle(up, panoHeading);
   this.add(shardsMesh);
 
   // create center cube
