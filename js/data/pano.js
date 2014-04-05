@@ -87,37 +87,6 @@ Pano.prototype.getPoint = function(x, y, isPixelCoords) {
   return normal;
 };
 
-Pano.prototype.getPoints = function() {
-  var twoPi = Math.PI * 2;
-  var panoImage = this.panoData.canvas;
-  var panoCtx = panoImage.getContext('2d');
-  var panoImageData = panoCtx.getImageData(0, 0, panoImage.width,
-    panoImage.height);
-
-  // beta/lat, lambda/lng
-  var raysLng = 240, raysLat = 60, lngIndex, latIndex;
-  var panoX, panoY, panoIndex, c;
-  var n, points = [];
-  // var lngOffset = twoPi * (-this.panoData.heading / 360.0);
-  for(lngIndex = 0; lngIndex < raysLng; lngIndex++) {
-    for(latIndex = 1; latIndex <= raysLat * 0.51; latIndex++) {
-      n = this.getPoint(lngIndex / raysLng, latIndex / raysLat, false);
-      if(!n) { continue; }
-      points.push(n);
-
-      // calculate color
-      panoX = panoImage.width - Math.floor(
-        lngIndex * panoImage.width / raysLng);
-      panoY = Math.floor(latIndex * panoImage.height / raysLat);
-      panoIndex = 4 * (panoY * panoImage.width + panoX);
-      n.c = (panoImageData.data[panoIndex] << 16) +
-        (panoImageData.data[panoIndex + 1] << 8) +
-        panoImageData.data[panoIndex + 2];
-    }
-  }
-  return points;
-};
-
 Pano.prototype.getPlanePointAtCoord = function(plane, x, y) {
   var twoPi = Math.PI * 2;
   var w = this.depthData.width, h = this.depthData.height;
@@ -266,7 +235,6 @@ Pano.prototype.getPlaneImage = function() {
       } else {
         shard = this.getShard(this.depthData.planes[idx], x);
         rgb = shard ? shard.rgb : {r: 120, g: 120, b: 120};
-        // rgb = this.depthData.planes[idx].rgb;
       }
       put(x, y, rgb);
     }

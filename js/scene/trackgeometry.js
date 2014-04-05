@@ -29,38 +29,6 @@ TrackGeometry.prototype.addPano = function(pano) {
     vertexColors: THREE.VertexColors,
     side: THREE.DoubleSide});
 
-  // create points
-  // var point, color, l;
-  // var points = pano.getPoints();
-  // for(i = 0, l = points.length; i < l; i++) {
-  //   point = points[i].clone().add(trackOffset);
-  //   pointsGeom.vertices.push(
-  //     new THREE.Vector3(point.x, point.y - 0.3, point.z - 0.3),
-  //     new THREE.Vector3(point.x, point.y + 0.3, point.z - 0.3),
-  //     new THREE.Vector3(point.x, point.y + 0.3, point.z + 0.3),
-  //     new THREE.Vector3(point.x, point.y - 0.3, point.z + 0.3),
-  //     new THREE.Vector3(point.x - 0.3, point.y - 0.3, point.z),
-  //     new THREE.Vector3(point.x - 0.3, point.y + 0.3, point.z),
-  //     new THREE.Vector3(point.x + 0.3, point.y + 0.3, point.z),
-  //     new THREE.Vector3(point.x + 0.3, point.y - 0.3, point.z));
-  //   color = new THREE.Color(points[i].c);
-  //   pointsGeom.faces.push(
-  //     new THREE.Face3(i*8+0, i*8+1, i*8+2),
-  //     new THREE.Face3(i*8+2, i*8+3, i*8+0),
-  //     new THREE.Face3(i*8+4+0, i*8+4+1, i*8+4+2),
-  //     new THREE.Face3(i*8+4+2, i*8+4+3, i*8+4+0));
-  //   pointsGeom.faces[i*4].vertexColors =
-  //     pointsGeom.faces[i*4+1].vertexColors =
-  //     pointsGeom.faces[i*4+2].vertexColors =
-  //     pointsGeom.faces[i*4+3].vertexColors =
-  //     [color, color, color];
-  // }
-  // var pointsMesh = new THREE.Mesh(pointsGeom, pointsMaterial);
-  // pointsMesh.setRotationFromAxisAngle(up, panoHeading);
-  // this.add(pointsMesh);
-
-  // create planes
-
   var shard, shards = pano.getShards(), col, row, lastVertex, vs;
   var shardsGeom = new THREE.Geometry();
   var texture = new THREE.Texture(pano.panoData.canvas);
