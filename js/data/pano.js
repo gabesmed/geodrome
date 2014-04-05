@@ -107,99 +107,46 @@ Pano.prototype.getPoints = function() {
   return points;
 };
 
-Pano.prototype.getPlanes = function() {
+Pano.prototype.getPlanePointAtCoord = function(plane, x, y) {
+  var twoPi = Math.PI * 2;
+  var w = this.depthData.width, h = this.depthData.height;
+  var up = new THREE.Vector3(0, 1, 0);
+  var phi = (w - x - 1) / (w - 1) * 2 * Math.PI + Math.PI/2;
+  var theta = (h - y - 1) / (h - 1) * Math.PI;
+  var panoHeading = -twoPi * this.panoData.heading / 360.0;
+  var v = [
+    Math.sin(theta) * Math.cos(phi),
+    Math.sin(theta) * Math.sin(phi),
+    Math.cos(theta)];
+  var n = plane.n;
+  var t = plane.d / (v[0] * n[0] + v[1] * n[1] + v[2] * n[2]);
+  var vt = [v[0] * t, v[1] * t, v[2] * t];
+  var d = Math.sqrt(vt[0]*vt[0] + vt[1]*vt[1] + vt[2]*vt[2]);
+  var r = new THREE.Vector3(v[1], v[2], v[0])
+    .applyAxisAngle(up, Math.PI + panoHeading)
+    .multiplyScalar(d);
+  return r;
+};
 
+Pano.prototype.getPlanes = function() {
   var twoPi = Math.PI * 2, planes = [],
     w = this.depthData.width,
     h = this.depthData.height, normal, depth,
     t, l, r, b, tl, tr, bl, br,
-    lx, lz, rx, rz, ty, by,
-    up = new THREE.Vector3(0, 1, 0);
-  var panoHeading = -twoPi * this.panoData.heading / 360.0;
+    lx, lz, rx, rz, ty, by;
+  var up = new THREE.Vector3(0, 1, 0);
   this.depthData.planes.forEach(function(plane, i) {
     if(i === 0) { return; } // null
     if(!this.includePlane(plane)) { return; } // ground plane
-    // if(!plane.hMax) { return; } // no height
 
-    // ATTEMPT THREE, PLANE NORMAL AND DEPTH FROM GOOGLE DATA
-
-    // normal = new THREE.Vector3(plane.n[1], plane.n[2], plane.n[0]);
-    // normal.applyAxisAngle(up, panoHeading);
-    // var planeNormalX = normal.clone().cross(up).normalize();
-    // var planeNormalY = planeNormalX.clone().cross(normal).normalize();
-
-    // var position = normal.clone().multiplyScalar(plane.d);
-
-    // tl = position.clone().add(normal.clone()
-    //   .add(planeNormalX.clone().multiplyScalar(10))
-    //   .add(planeNormalY.clone().multiplyScalar(10)));
-    // tr = position.clone().add(normal.clone()
-    //   .add(planeNormalX.clone().multiplyScalar(-10))
-    //   .add(planeNormalY.clone().multiplyScalar(10)));
-    // br = position.clone().add(normal.clone()
-    //   .add(planeNormalX.clone().multiplyScalar(-10))
-    //   .add(planeNormalY.clone().multiplyScalar(-10)));
-    // bl = position.clone().add(normal.clone()
-    //   .add(planeNormalX.clone().multiplyScalar(10))
-    //   .add(planeNormalY.clone().multiplyScalar(-10)));
-
-    // planes.push({ci: plane.ci, vertices: [tl, tr, br, bl]});
-
-    // ATTEMPT FOUR: plane position from google data, left+right
-    // from pixel data.
-
-    // normal = new THREE.Vector3(plane.n[1], plane.n[2], plane.n[0]);
-    // normal.applyAxisAngle(up, panoHeading);
-    // var planeNormalX = normal.clone().cross(up).normalize();
-    // var planeNormalY = planeNormalX.clone().cross(normal).normalize();
-    // var position = normal.clone().multiplyScalar(plane.d);
-    // var phi0 = (plane.x0 / w * twoPi) + panoHeading;
-    // var nx0 = new THREE.Vector3(-Math.cos(phi0), 0, Math.sin(phi0));
-    // var dx0 = plane.d / normal.clone().dot(nx0);
-    // console.log('nx0', nx0.toArray(), 'dx0', dx0);
-    // var rx0 = nx0.clone().multiplyScalar(dx0);
-
-    // var phi1 = (plane.x1 / w * twoPi) + panoHeading;
-    // var nx1 = new THREE.Vector3(-Math.cos(phi1), 0, Math.sin(phi1));
-    // var dx1 = plane.d / normal.clone().dot(nx1);
-    // var rx1 = nx1.clone().multiplyScalar(dx1);
-
-    // tl = new THREE.Vector3(rx0.x, 10, rx0.z);
-    // tr = new THREE.Vector3(rx1.x, 10, rx1.z);
-    // br = new THREE.Vector3(rx1.x, -10, rx1.z);
-    // bl = new THREE.Vector3(rx0.x, -10, rx0.z);
-
-    // planes.push({ci: plane.ci, rgb: plane.rgb, vertices: [tl, tr, br, bl]});
-
-    // ATTEMPT FIVE: Pull more wholesale from GSVPanoDepth algo
-
-    // normal = new THREE.Vector3(plane.n[1], plane.n[2], plane.n[0]);
-    // normal.applyAxisAngle(up, panoHeading);
-
-    function rFromXY(x, y) {
-      var phi = (w - x - 1) / (w - 1) * 2 * Math.PI + Math.PI/2;
-      var theta = (h - y - 1) / (h - 1) * Math.PI;
-      var v = [
-        Math.sin(theta) * Math.cos(phi),
-        Math.sin(theta) * Math.sin(phi),
-        Math.cos(theta)];
-      var n = plane.n;
-      var t = plane.d / (v[0] * n[0] + v[1] * n[1] + v[2] * n[2]);
-      var vt = [v[0] * t, v[1] * t, v[2] * t];
-      var d = Math.sqrt(vt[0]*vt[0] + vt[1]*vt[1] + vt[2]*vt[2]);
-      var r = new THREE.Vector3(v[1], v[2], v[0])
-        .applyAxisAngle(up, Math.PI + panoHeading)
-        .multiplyScalar(d);
-      return r;
-    }
-
-    tl = rFromXY(plane.x0, 127).add(up.clone().multiplyScalar(10));
-    tr = rFromXY(plane.x1, 127).add(up.clone().multiplyScalar(10));
-    br = rFromXY(plane.x1, 127);
-    bl = rFromXY(plane.x0, 127);
+    tl = this.getPlanePointAtCoord(plane, plane.x0, 127)
+      .add(up.clone().multiplyScalar(10));
+    tr = this.getPlanePointAtCoord(plane, plane.x1, 127)
+      .add(up.clone().multiplyScalar(10));
+    br = this.getPlanePointAtCoord(plane, plane.x1, 127);
+    bl = this.getPlanePointAtCoord(plane, plane.x0, 127);
 
     planes.push({ci: plane.ci, rgb: plane.rgb, vertices: [tl, tr, br, bl]});
-
   }, this);
   return planes;
 };
