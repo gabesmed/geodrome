@@ -62,7 +62,8 @@ TrackGeometry.prototype.addPano = function(pano, cell) {
   var panoOffset = this.offsetForLocation(pano.location);
   var panoHeading = ((-pano.heading / 180.0) + 1) * Math.PI;
 
-  var shard, shards = pano.getShards(), col, row, lastVertex, vs;
+  var shards = pano.getShards();
+  var shard, col, row, lastVertex, vs;
   var shardsGeom = new THREE.Geometry();
   var texture = new THREE.Texture(pano.panoCanvas);
   texture.needsUpdate = true;
@@ -107,11 +108,11 @@ TrackGeometry.prototype.addPano = function(pano, cell) {
   centerCube.position.copy(panoOffset);
   this.add(centerCube);
 
+  // add voronoi cell
   this.addVoronoiCell(cell);
 };
 
 TrackGeometry.prototype.addVoronoiCell = function(cell) {
-  console.log('addVoronoiCell', cell);
   var cellGeom = new THREE.Geometry();
   var up = new THREE.Vector3(0, 1, 0);
   for(var i = 0; i < cell.coords.length - 1; i++) {
