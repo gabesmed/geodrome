@@ -17,12 +17,14 @@ TrackGeometry.prototype.offsetForLocation = function(location) {
 
 TrackGeometry.prototype.addPano = function(pano) {
   // create materials
+  var i, s;
   var trackOffset = this.offsetForLocation(pano.panoData.location.latLng);
-  var pointsGeom = new THREE.Geometry();
-  var pointsMaterial = new THREE.MeshLambertMaterial({
-    color: 0xffffff, shading: THREE.FlatShading,
-    vertexColors: THREE.VertexColors,
-    side: THREE.DoubleSide});
+
+  // var pointsGeom = new THREE.Geometry();
+  // var pointsMaterial = new THREE.MeshLambertMaterial({
+  //   color: 0xffffff, shading: THREE.FlatShading,
+  //   vertexColors: THREE.VertexColors,
+  //   side: THREE.DoubleSide});
 
   // // create points
   // var point, color, i, l;
@@ -55,29 +57,36 @@ TrackGeometry.prototype.addPano = function(pano) {
 
   // create planes
 
-  var plane, planes = pano.getPlanes();
-  var planesGeom = new THREE.Geometry();
+  var shard, shards = pano.getShards(), si, sv0;
+  var shardsGeom = new THREE.Geometry();
   var texture = new THREE.Texture(pano.panoData.canvas);
-  var planesMaterial = new THREE.MeshBasicMaterial({
-    color: 0xffffff, side: THREE.DoubleSide, map: texture});
-  planesMaterial.map.needsUpdate = true;
+  var shardsMaterial = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    side: THREE.DoubleSide,
+    // wireframe: true,
+    map: texture
+  });
+  shardsMaterial.map.needsUpdate = true;
 
-  for(i = 0, l = planes.length; i < l; i++) {
-    plane = planes[i];
-    planesGeom.vertices.push(
-      plane.vertices[0].clone().add(trackOffset),
-      plane.vertices[1].clone().add(trackOffset),
-      plane.vertices[2].clone().add(trackOffset),
-      plane.vertices[3].clone().add(trackOffset));
-    planesGeom.faces.push(
-      new THREE.Face3(i*4+0, i*4+1, i*4+2),
-      new THREE.Face3(i*4+2, i*4+3, i*4+0));
-    planesGeom.faceVertexUvs[0].push(
-      [plane.uv[0], plane.uv[1], plane.uv[2]],
-      [plane.uv[2], plane.uv[3], plane.uv[0]]);
+  for(i = 0, l = shards.length; i < l; i++) {
+    shard = shards[i];
+    for(si = 0; si < shard.numStripes; si++) {
+      sv0 = shardsGeom.vertices.length;
+      shardsGeom.vertices.push(
+        shard.vertices[si * 2 + 0].clone().add(trackOffset),
+        shard.vertices[si * 2 + 2].clone().add(trackOffset),
+        shard.vertices[si * 2 + 3].clone().add(trackOffset),
+        shard.vertices[si * 2 + 1].clone().add(trackOffset));
+      shardsGeom.faces.push(
+        new THREE.Face3(sv0 + 0, sv0 + 1, sv0 + 2),
+        new THREE.Face3(sv0 + 2, sv0 + 3, sv0 + 0));
+      shardsGeom.faceVertexUvs[0].push(
+        [shard.uv[si * 2 + 0], shard.uv[si * 2 + 2], shard.uv[si * 2 + 3]],
+        [shard.uv[si * 2 + 3], shard.uv[si * 2 + 1], shard.uv[si * 2 + 0]]);
+    }
   }
-  var planesMesh = new THREE.Mesh(planesGeom, planesMaterial);
-  this.add(planesMesh);
+  var shardsMesh = new THREE.Mesh(shardsGeom, shardsMaterial);
+  this.add(shardsMesh);
 
   // create center cube
   var cubeGeometry = new THREE.CubeGeometry(1, 1, 1);

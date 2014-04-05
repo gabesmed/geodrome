@@ -128,53 +128,55 @@ Pano.prototype.getPlanePointAtCoord = function(plane, x, y) {
   return r;
 };
 
-Pano.prototype.getPlanes = function() {
+Pano.prototype.getShards = function() {
   var twoPi = Math.PI * 2, shards = [],
     w = this.depthData.width,
     h = this.depthData.height, normal, depth,
-    t, l, r, b, tl, tr, bl, br, dl, dr, phi0t, phi0b, phi1t, phi1b,
+    l, r, t, b, d, colIndexX, colX, colCount, vertices, uvx, colXp,
+    colTop, colBottom, colNormal,
+    phiT, phiB, uvy0, uvy1, uvt, uvb;
+
+  var tl, tr, bl, br, dl, dr, phi0t, phi0b, phi1t, phi1b,
     uvx0, uvx1, uvx0y0, uvx0y1, uvx1y0, uvx1y1,
     uvtl, uvtr, uvbr, uvbl;
+
   var up = new THREE.Vector3(0, 1, 0);
   this.depthData.shards.forEach(function(shard, i) {
     if(i === 0) { return; } // null
     if(!this.includeShard(shard)) { return; } // ground shard
 
-    l = this.getPlanePointAtCoord(shard, shard.x0, 127);
-    r = this.getPlanePointAtCoord(shard, shard.x1, 127);
+    // numStripes = Math.ceil(shard.w / 0.05);
+    colCount = 16;
+    vertices = [];
+    uv = [];
+
     t = this.getPlanePointAtCoord(shard, shard.hx, shard.hy0);
     b = this.getPlanePointAtCoord(shard, shard.hx, shard.hy1);
+    l = this.getPlanePointAtCoord(shard, shard.x0, 127);
+    r = this.getPlanePointAtCoord(shard, shard.x1, 127);
 
-    tl = new THREE.Vector3(l.x, t.y, l.z);
-    tr = new THREE.Vector3(r.x, t.y, r.z);
-    br = new THREE.Vector3(r.x, b.y, r.z);
-    bl = new THREE.Vector3(l.x, b.y, l.z);
-
-    dl = l.length(),
-    dr = r.length(),
-    phi0t  = Math.atan(t.y / dl);
-    phi0b  = Math.atan(b.y / dl);
-    phi1t  = Math.atan(t.y / dr);
-    phi1b  = Math.atan(b.y / dr);
-
-    uvx0 = shard.x0 / w;
-    uvx1 = shard.x1 / w;
-
-    // y 1 is top 0 is bototm
-    uvx0y0 = (phi0t / Math.PI) + 0.5;
-    uvx0y1 = (phi0b / Math.PI) + 0.5;
-    uvx1y0 = (phi1t / Math.PI) + 0.5;
-    uvx1y1 = (phi1b / Math.PI) + 0.5;
-
-    uvtl = new THREE.Vector2(uvx0, uvx0y0);
-    uvtr = new THREE.Vector2(uvx1, uvx1y0);
-    uvbr = new THREE.Vector2(uvx1, uvx1y1);
-    uvbl = new THREE.Vector2(uvx0, uvx0y1);
+    for(colIndexX = 0; colIndexX <= colCount; colIndexX++) {
+      colXp = colIndexX / colCount;
+      colX = l.clone().lerp(r, colXp);
+      colTop = new THREE.Vector3(colX.x, t.y, colX.z);
+      colBottom = new THREE.Vector3(colX.x, b.y, colX.z);
+      d = colX.length();
+      phiT = Math.atan(t.y / d);
+      phiB = Math.atan(b.y / d);
+      colNormal = colX.clone().normalize(),
+      // uvx = 0.5 - (Math.atan2(colNormal.x, colNormal.y) / twoPi);
+      uvx = (shard.x0 + colXp * shard.w) / w;
+      uvy0 = (phiT / Math.PI) + 0.5;
+      uvy1 = (phiB / Math.PI) + 0.5;
+      uvt = new THREE.Vector2(uvx, uvy0);
+      uvb = new THREE.Vector2(uvx, uvy1);
+      vertices.push(colTop, colBottom);
+      uv.push(uvt, uvb);
+    }
 
     shards.push({
       ci: shard.ci, rgb: shard.rgb,
-      vertices: [tl, tr, br, bl],
-      uv: [uvtl, uvtr, uvbr, uvbl]
+      numStripes: colCount, vertices: vertices, uv: uv
     });
   }, this);
   return shards;
