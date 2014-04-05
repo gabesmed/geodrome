@@ -74,6 +74,8 @@ Track.prototype.fetchPanos = function(progressCallback, errorCallback) {
       console.info('rendering ' + (i + 1) + ' / ' + self.route.length);
       return Pano.load(location);
     }).then(function(pano) {
+      if(!!panoIds[pano.panoId]) { return; }  // pano has already been loaded!
+      panoIds[pano.panoId] = true;
       panos.push(pano);
       errors.push(null);
       if(progressCallback) { progressCallback(pano, i); }

@@ -22,7 +22,7 @@ Pano.load = function(location) {
   return self.fetchPano(location).then(function(panoData) {
     pano.panoId = panoData.panoId;
     pano.heading = panoData.heading;
-    pano.location = panoData.location;
+    pano.location = panoData.location.latLng;
     pano.panoCanvas = panoData.canvas;
     return self.fetchDepthMap(panoData.panoId);
   }).then(function(depthData) {

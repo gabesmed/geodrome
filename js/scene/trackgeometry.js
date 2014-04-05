@@ -1,8 +1,11 @@
 var TrackGeometry = function(track, panos) {
   THREE.Object3D.call(this);
   this.track = track;
-  panos.forEach(function(pano) {
-    this.addPano(pano);
+  if(!this.track.waypoints.length) { throw new Error("Empty track"); }
+
+  var voronoi = this.calculateVoronoi(panos);
+  panos.forEach(function(pano, i) {
+    this.addPano(pano, voronoi.cells[i]);
   }, this);
 };
 
@@ -18,30 +21,43 @@ TrackGeometry.prototype.offsetForLocation = function(location) {
   return new THREE.Vector3(northOffset, 0, eastOffset);
 };
 
-TrackGeometry.prototype.addPano = function(pano) {
+TrackGeometry.prototype.calculateVoronoi = function(panos) {
+  // calculate pano coordinates
+  var sites = panos.map(function(pano) {
+    var coord = this.offsetForLocation(pano.location);
+    return {x: coord.z, y: coord.x};
+  }, this);
+  this.sites = sites;
+  // and bounding box
+  var bounds = {
+    xl: sites[0].x, xr: sites[0].x,
+    yt: sites[0].y, yb: sites[0].y
+  };
+  sites.forEach(function(site) {
+    if(site.x < bounds.xl) { bounds.xl = site.x; }
+    if(site.x > bounds.xr) { bounds.xr = site.x; }
+    if(site.y < bounds.yt) { bounds.yt = site.y; }
+    if(site.y > bounds.yb) { bounds.yb = site.y; }
+  });
+  var boundsMargin = 100; // meters
+  bounds.xl -= boundsMargin; bounds.xr += boundsMargin;
+  bounds.yt -= boundsMargin; bounds.yb += boundsMargin;
+  var voronoi = new Voronoi().compute(sites, bounds);
+  return voronoi;
+};
+
+TrackGeometry.prototype.addPano = function(pano, cell) {
   // create materials
-  var i, s;
-  var trackOffset = this.offsetForLocation(pano.location.latLng);
-
-  var up = new THREE.Vector3(0, 1, 0);
+  var i, s, up = new THREE.Vector3(0, 1, 0);
+  var panoOffset = this.offsetForLocation(pano.location);
   var panoHeading = ((-pano.heading / 180.0) + 1) * Math.PI;
-
-  var pointsGeom = new THREE.Geometry();
-  var pointsMaterial = new THREE.MeshLambertMaterial({
-    color: 0xffffff, shading: THREE.FlatShading,
-    vertexColors: THREE.VertexColors,
-    side: THREE.DoubleSide});
 
   var shard, shards = pano.getShards(), col, row, lastVertex, vs;
   var shardsGeom = new THREE.Geometry();
   var texture = new THREE.Texture(pano.panoCanvas);
+  texture.needsUpdate = true;
   var shardsMaterial = new THREE.MeshBasicMaterial({
-    color: 0xffffff,
-    side: THREE.DoubleSide,
-    // wireframe: true,
-    map: texture
-  });
-  shardsMaterial.map.needsUpdate = true;
+    color: 0xffffff, side: THREE.DoubleSide, map: texture});
 
   for(i = 0, l = shards.length; i < l; i++) {
     shard = shards[i];
@@ -67,16 +83,46 @@ TrackGeometry.prototype.addPano = function(pano) {
       }
     }
   }
+
   var shardsMesh = new THREE.Mesh(shardsGeom, shardsMaterial);
   shardsMesh.setRotationFromAxisAngle(up, panoHeading);
-  shardsMesh.position = trackOffset;
+  shardsMesh.position = panoOffset;
   this.add(shardsMesh);
 
-  // create center cube
+  // create pano cube
   var cubeGeometry = new THREE.CubeGeometry(1, 1, 1);
   var cubeMaterial = new THREE.MeshLambertMaterial({
     color: 0xffffff, ambient: 0xffffff, shading: THREE.FlatShading});
   var centerCube = new THREE.Mesh(cubeGeometry, cubeMaterial);
-  centerCube.position.copy(trackOffset);
+  centerCube.position.copy(panoOffset);
   this.add(centerCube);
+
+  this.addVoronoiCell(cell);
+};
+
+
+TrackGeometry.prototype.addVoronoiCell = function(cell) {
+  console.log('addVoronoiCell', cell);
+  var cellGeom = new THREE.Geometry();
+  var up = new THREE.Vector3(0, 1, 0);
+  cell.halfedges.forEach(function(halfedge) {
+    var p0 = halfedge.getStartpoint();
+    var p1 = halfedge.getEndpoint();
+    console.log('halfedge', p0, p1);
+    var v0 = new THREE.Vector3(p0.y, 0, p0.x);
+    var v1 = new THREE.Vector3(p1.y, 0, p1.x);
+    var lastVertex = cellGeom.vertices.length;
+    cellGeom.vertices.push(
+      v0.clone(),
+      v0.clone().add(up.clone().multiplyScalar(-2)),
+      v1.clone().add(up.clone().multiplyScalar(-2)),
+      v1.clone());
+    cellGeom.faces.push(
+      new THREE.Face3(lastVertex + 0, lastVertex + 1, lastVertex + 2),
+      new THREE.Face3(lastVertex + 2, lastVertex + 3, lastVertex + 0));
+  });
+  var cellMaterial = new THREE.MeshLambertMaterial({
+    color: 0xffffff, ambient: 0xffffff, shading: THREE.FlatShading});
+  var cellMesh = new THREE.Mesh(cellGeom, cellMaterial);
+  this.add(cellMesh);
 };

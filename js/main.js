@@ -65,7 +65,11 @@ function updateScene() {
     // success!
     if(result.numErrors) { console.warning(numErrors + ' errors.'); }
     else { console.info('all ok!'); }
-    trackGeom = new TrackGeometry(trackEditor.track, result.panos);
+    try {
+      trackGeom = new TrackGeometry(trackEditor.track, result.panos);
+    } catch(err) {
+      console.error(err);
+    }
     scene.add(trackGeom);
     render();
   }, function(err) {
@@ -78,7 +82,10 @@ function init() {
   initScene();
   $("#renderContainer").html(renderer.domElement);
 
-  var initialPath = [new google.maps.LatLng(42.345601, -71.098348)];
+  var initialPath = [
+    new google.maps.LatLng(42.345601, -71.098348),
+    new google.maps.LatLng(42.346555, -71.098644)
+  ];
   trackEditor = new TrackEditor('#trackEditorContainer', initialPath[0]);
   trackEditor.onGenerate = function() { updateScene(); };
   trackEditor.reset(initialPath).then(function() { updateScene(); });
