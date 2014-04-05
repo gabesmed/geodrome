@@ -122,7 +122,7 @@ Pano.prototype.getPlanePointAtCoord = function(plane, x, y) {
   var t = plane.d / (v[0] * n[0] + v[1] * n[1] + v[2] * n[2]);
   var vt = [v[0] * t, v[1] * t, v[2] * t];
   var d = Math.sqrt(vt[0]*vt[0] + vt[1]*vt[1] + vt[2]*vt[2]);
-  var r = new THREE.Vector3(v[1], v[2], v[0])
+  var r = new THREE.Vector3(v[1], -v[2], v[0])
     .applyAxisAngle(up, Math.PI + panoHeading)
     .multiplyScalar(d);
   return r;
@@ -139,12 +139,15 @@ Pano.prototype.getPlanes = function() {
     if(i === 0) { return; } // null
     if(!this.includePlane(plane)) { return; } // ground plane
 
-    tl = this.getPlanePointAtCoord(plane, plane.x0, 127)
-      .add(up.clone().multiplyScalar(10));
-    tr = this.getPlanePointAtCoord(plane, plane.x1, 127)
-      .add(up.clone().multiplyScalar(10));
-    br = this.getPlanePointAtCoord(plane, plane.x1, 127);
-    bl = this.getPlanePointAtCoord(plane, plane.x0, 127);
+    l = this.getPlanePointAtCoord(plane, plane.x0, 127);
+    r = this.getPlanePointAtCoord(plane, plane.x1, 127);
+    t = this.getPlanePointAtCoord(plane, plane.hx, plane.hy0);
+    b = this.getPlanePointAtCoord(plane, plane.hx, plane.hy1);
+
+    tl = new THREE.Vector3(l.x, t.y, l.z);
+    tr = new THREE.Vector3(r.x, t.y, r.z);
+    br = new THREE.Vector3(r.x, b.y, r.z);
+    bl = new THREE.Vector3(l.x, b.y, l.z);
 
     planes.push({ci: plane.ci, rgb: plane.rgb, vertices: [tl, tr, br, bl]});
   }, this);
