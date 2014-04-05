@@ -72,7 +72,7 @@ Track.prototype.fetchPanos = function(progressCallback, errorCallback) {
   this.route.forEach(function(location, i) {
     promiseChain = promiseChain.then(function() {
       console.info('rendering ' + (i + 1) + ' / ' + self.route.length);
-      return new Pano().load(location);
+      return Pano.load(location);
     }).then(function(pano) {
       panos.push(pano);
       errors.push(null);

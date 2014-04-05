@@ -17,21 +17,21 @@ var Pano = function() {
   this.depthData = null;
 };
 
-Pano.prototype.load = function(location) {
-  var self = this;
-  return this.fetchPano(location).then(function(panoData) {
-    self.panoId = panoData.panoId;
-    self.heading = panoData.heading;
-    self.location = panoData.location;
-    self.panoCanvas = panoData.canvas;
+Pano.load = function(location) {
+  var pano = new Pano(), self = this;
+  return self.fetchPano(location).then(function(panoData) {
+    pano.panoId = panoData.panoId;
+    pano.heading = panoData.heading;
+    pano.location = panoData.location;
+    pano.panoCanvas = panoData.canvas;
     return self.fetchDepthMap(panoData.panoId);
   }).then(function(depthData) {
-    self.depthData = depthData;
-    return self;
+    pano.depthData = depthData;
+    return pano;
   });
 };
 
-Pano.prototype.fetchPano = function(location) {
+Pano.fetchPano = function(location) {
   return new RSVP.Promise(function(resolve, reject) {
     var rawPanoData;
     var panoLoader = new GSVPANO.PanoLoader({zoom: 1});
@@ -52,7 +52,7 @@ Pano.prototype.fetchPano = function(location) {
   });
 };
 
-Pano.prototype.fetchDepthMap = function(panoId) {
+Pano.fetchDepthMap = function(panoId) {
   return new RSVP.Promise(function(resolve, reject) {
     var depthLoader = new GSVPANO.PanoDepthLoader();
     depthLoader.onDepthLoad = function() {
