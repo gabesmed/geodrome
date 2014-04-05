@@ -56,23 +56,18 @@ function render() {
 
 function updateScene() {
   if(trackGeom) { scene.remove(trackGeom); }
-  trackGeom = new TrackGeometry(trackEditor.track);
-  scene.add(trackGeom);
-
   trackEditor.track.fetchPanos(function(pano) {
-    // pano loaded
-    try {
-      $("#panoContainer").html(pano.panoCanvas);
-      $("#depthContainer").html(pano.getDepthImage());
-      $("#planeContainer").html(pano.getPlaneImage());
-      trackGeom.addPano(pano);
-    } catch(err) {
-      console.error(err);
-    }
-    render();
+    // new pano loaded callback
+    $("#panoContainer").html(pano.panoCanvas);
+    $("#depthContainer").html(pano.getDepthImage());
+    $("#planeContainer").html(pano.getPlaneImage());
   }).then(function(result) {
+    // success!
     if(result.numErrors) { console.warning(numErrors + ' errors.'); }
     else { console.info('all ok!'); }
+    trackGeom = new TrackGeometry(trackEditor.track, result.panos);
+    scene.add(trackGeom);
+    render();
   }, function(err) {
     console.error(err);
   });

@@ -1,6 +1,9 @@
-var TrackGeometry = function(track) {
+var TrackGeometry = function(track, panos) {
   THREE.Object3D.call(this);
   this.track = track;
+  panos.forEach(function(pano) {
+    this.addPano(pano);
+  }, this);
 };
 
 TrackGeometry.prototype = Object.create(THREE.Object3D.prototype);
