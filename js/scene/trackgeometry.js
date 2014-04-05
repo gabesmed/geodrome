@@ -80,6 +80,8 @@ TrackGeometry.prototype.createShard = function(shard, cell, geom) {
 
 TrackGeometry.prototype.addPano = function(pano, cell) {
   var i, s, up = new THREE.Vector3(0, 1, 0);
+
+  // create pano root
   var panoRoot = new THREE.Object3D();
   var panoOffset = this.offsetForLocation(pano.location);
   var panoHeading = ((-pano.heading / 180.0) + 1) * Math.PI;
@@ -87,6 +89,16 @@ TrackGeometry.prototype.addPano = function(pano, cell) {
   panoRoot.position = panoOffset;
   this.add(panoRoot);
 
+  // create voronoi cell
+  function reverseXform(pt) {
+    return pt.clone().sub(panoOffset).applyAxisAngle(up, -panoHeading);
+  }
+  var panoCell = {edges: cell.edges.map(function(edge) {
+    return [reverseXform(edge[0]), reverseXform(edge[1])];
+  })};
+  if(cell.edges.length) { this.addVoronoiCell(panoRoot, panoCell); }
+
+  // create shards
   var shards = pano.getShards();
   var shard, col, row, lastVertex, vs;
   var shardsGeom = new THREE.Geometry();
@@ -94,41 +106,30 @@ TrackGeometry.prototype.addPano = function(pano, cell) {
   texture.needsUpdate = true;
   var shardsMaterial = new THREE.MeshBasicMaterial({
     color: 0xffffff, side: THREE.DoubleSide, map: texture});
-
   for(i = 0, l = shards.length; i < l; i++) {
     this.createShard(shards[i], cell, shardsGeom);
   }
-
   var shardsMesh = new THREE.Mesh(shardsGeom, shardsMaterial);
   panoRoot.add(shardsMesh);
 
-  // create pano cube
+  // create viewpoint cube
   var cubeGeometry = new THREE.CubeGeometry(1, 1, 1);
   var cubeMaterial = new THREE.MeshLambertMaterial({
     color: 0xffffff, ambient: 0xffffff, shading: THREE.FlatShading});
   var centerCube = new THREE.Mesh(cubeGeometry, cubeMaterial);
   panoRoot.add(centerCube);
-
-  // add voronoi cell
-  if(cell.edges.length) {
-    this.addVoronoiCell(panoRoot, cell, panoOffset, panoHeading);
-  }
 };
 
-TrackGeometry.prototype.addVoronoiCell = function(
-    panoRoot, cell, offset, heading) {
+TrackGeometry.prototype.addVoronoiCell = function(panoRoot, cell) {
   var cellGeom = new THREE.Geometry();
   var up = new THREE.Vector3(0, 1, 0);
-  function xform(pt) {
-    return pt.clone().sub(offset).applyAxisAngle(up, -heading);
-  }
   cell.edges.forEach(function(edge) {
     var lastVertex = cellGeom.vertices.length;
     cellGeom.vertices.push(
-      xform(edge[0]),
-      xform(edge[0]).add(up.clone().multiplyScalar(-2)),
-      xform(edge[1]).add(up.clone().multiplyScalar(-2)),
-      xform(edge[1]));
+      edge[0].clone(),
+      edge[0].clone().add(up.clone().multiplyScalar(-2)),
+      edge[1].clone().add(up.clone().multiplyScalar(-2)),
+      edge[1].clone());
     cellGeom.faces.push(
       new THREE.Face3(lastVertex + 0, lastVertex + 1, lastVertex + 2),
       new THREE.Face3(lastVertex + 2, lastVertex + 3, lastVertex + 0));
