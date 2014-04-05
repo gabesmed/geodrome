@@ -143,48 +143,46 @@ Pano.prototype.getShards = function() {
   var twoPi = Math.PI * 2, shards = [],
     w = this.depthData.width,
     h = this.depthData.height, normal, depth,
-    l, r, t, b, d, colX, colPos, cols, vertices, uvx, colXp,
+    shardLeft, shardRight, shardTop, shardBottom, colDepth, shardHeight,
+    row, rows, col, colPos, cols, vertices, uvx, pointPos, pointY,
     colTop, colBottom, colNormal,
-    phiT, phiB, uvy0, uvy1, uvt, uvb;
-
-  var tl, tr, bl, br, dl, dr, phi0t, phi0b, phi1t, phi1b,
-    uvx0, uvx1, uvx0y0, uvx0y1, uvx1y0, uvx1y1,
-    uvtl, uvtr, uvbr, uvbl;
+    pointPhi, uvy, uv;
 
   var up = new THREE.Vector3(0, 1, 0);
   this.depthData.shards.forEach(function(shard, i) {
     if(i === 0) { return; } // null
     if(!this.includeShard(shard)) { return; } // ground shard
 
-    cols = 4;
+    cols = 4; rows = 1;
     vertices = [];
     uvs = [];
 
-    t = this.getPlanePointAtCoord(shard, shard.hx, shard.hy0);
-    b = this.getPlanePointAtCoord(shard, shard.hx, shard.hy1);
-    l = this.getPlanePointAtCoord(shard, shard.x0, 127.5);
-    r = this.getPlanePointAtCoord(shard, shard.x1, 127.5);
+    shardTop = this.getPlanePointAtCoord(shard, shard.hx, shard.hy0);
+    shardBottom = this.getPlanePointAtCoord(shard, shard.hx, shard.hy1);
+    shardLeft = this.getPlanePointAtCoord(shard, shard.x0, 127.5);
+    shardRight = this.getPlanePointAtCoord(shard, shard.x1, 127.5);
+    shardHeight = shardTop.y - shardBottom.y;
 
-    for(colX = 0; colX <= cols; colX++) {
-      colXp = colX / cols;
-      colPos = l.clone().lerp(r, colXp);
-      colTop = new THREE.Vector3(colPos.x, t.y, colPos.z);
-      colBottom = new THREE.Vector3(colPos.x, b.y, colPos.z);
+    for(col = 0; col <= cols; col++) {
+      colPos = shardLeft.clone().lerp(shardRight, (col / cols));
+      colTop = new THREE.Vector3(colPos.x, shardTop.y, colPos.z);
+      colBottom = new THREE.Vector3(colPos.x, shardBottom.y, colPos.z);
+      colDepth = colPos.length();
+      colNormal = colPos.clone().normalize();
 
-      d = colPos.length();
-      phiT = Math.atan(t.y / d);
-      phiB = Math.atan(b.y / d);
-
-      colNormal = colPos.clone().normalize(),
       uvx = Math.atan2(colNormal.z, colNormal.x) / twoPi;
       if(uvx < 0) { uvx += 1; }
 
-      uvy0 = (phiT / Math.PI) + 0.5;
-      uvy1 = (phiB / Math.PI) + 0.5;
-      uvt = new THREE.Vector2(uvx, uvy0);
-      uvb = new THREE.Vector2(uvx, uvy1);
-      vertices.push(colTop, colBottom);
-      uvs.push(uvt, uvb);
+      for(row = 0; row <= rows; row++) {
+        pointY = shardTop.y - shardHeight * (row / rows);
+        pointPos = new THREE.Vector3(colPos.x, pointY, colPos.z);
+        pointPhi = Math.atan(pointPos.y / colDepth);
+
+        uvy = (pointPhi / Math.PI) + 0.5;
+        uv = new THREE.Vector2(uvx, uvy);
+        vertices.push(pointPos);
+        uvs.push(uv);
+      }
     }
     shards.push({
       ci: shard.ci, rgb: shard.rgb,
