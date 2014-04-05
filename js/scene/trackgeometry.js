@@ -73,8 +73,8 @@ TrackGeometry.prototype.addPano = function(pano) {
       new THREE.Face3(i*4+0, i*4+1, i*4+2),
       new THREE.Face3(i*4+2, i*4+3, i*4+0));
     planesGeom.faceVertexUvs[0].push(
-      [plane.uv[1], plane.uv[2], plane.uv[3]],
-      [plane.uv[3], plane.uv[0], plane.uv[1]]);
+      [plane.uv[0], plane.uv[1], plane.uv[2]],
+      [plane.uv[2], plane.uv[3], plane.uv[0]]);
   }
   var planesMesh = new THREE.Mesh(planesGeom, planesMaterial);
   this.add(planesMesh);

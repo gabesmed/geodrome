@@ -132,8 +132,8 @@ Pano.prototype.getPlanes = function() {
   var twoPi = Math.PI * 2, shards = [],
     w = this.depthData.width,
     h = this.depthData.height, normal, depth,
-    t, l, r, b, tl, tr, bl, br,
-    uvx0, uvx1, uvy0, uvy1,
+    t, l, r, b, tl, tr, bl, br, dl, dr, ht, hb, phi0t, phi0b, phi1t, phi1b,
+    uvx0, uvx1, uvx0y0, uvx0y1, uvx1y0, uvx1y1,
     uvtl, uvtr, uvbr, uvbl;
   var up = new THREE.Vector3(0, 1, 0);
   this.depthData.shards.forEach(function(shard, i) {
@@ -150,15 +150,31 @@ Pano.prototype.getPlanes = function() {
     br = new THREE.Vector3(r.x, b.y, r.z);
     bl = new THREE.Vector3(l.x, b.y, l.z);
 
+    dl = l.length(),
+    dr = r.length(),
+    ht = t.y,
+    hb = -b.y;
+    phi0t  = Math.atan(ht / dl);
+    phi0b  = Math.atan(hb / dl);
+    phi1t  = Math.atan(ht / dr);
+    phi1b  = Math.atan(hb / dr);
+
+    // console.log(
+    //   'phi0t', phi0t, 'phi0b', phi0b,
+    //   'phi1t', phi1t, 'phi1b', phi1b);
+
+    // y 1 is top 0 is bototm
     uvx0 = shard.x0 / w;
     uvx1 = shard.x1 / w;
-    uvy0 = 1 - shard.hy0 / h;
-    uvy1 = 1 - shard.hy1 / h;
+    uvx0y0 = 1; // phi0t;
+    uvx0y1 = 0; // phi0b;
+    uvx1y0 = 1; // phi1t;
+    uvx1y1 = 0; // phi1b;
 
-    uvtl = new THREE.Vector2(uvx0, uvy1);
-    uvtr = new THREE.Vector2(uvx0, uvy0);
-    uvbr = new THREE.Vector2(uvx1, uvy0);
-    uvbl = new THREE.Vector2(uvx1, uvy1);
+    uvtl = new THREE.Vector2(uvx0, uvx0y0);
+    uvtr = new THREE.Vector2(uvx1, uvx1y0);
+    uvbr = new THREE.Vector2(uvx1, uvx1y1);
+    uvbl = new THREE.Vector2(uvx0, uvx0y1);
 
     shards.push({
       ci: shard.ci, rgb: shard.rgb,
