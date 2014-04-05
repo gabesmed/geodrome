@@ -44,6 +44,7 @@ TrackGeometry.prototype.calculateVoronoi = function(panos) {
   bounds.yt -= boundsMargin; bounds.yb += boundsMargin;
   var voronoi = new Voronoi().compute(sites, bounds);
   var cells = voronoi.cells.map(function(cell) {
+    if(!cell.halfedges.length) { return null; }
     var coords = [], pt;
     pt = cell.halfedges[0].getStartpoint();
     coords.push(new THREE.Vector3(pt.y, 0, pt.x));
@@ -54,6 +55,30 @@ TrackGeometry.prototype.calculateVoronoi = function(panos) {
     return {coords: coords};
   });
   return cells;
+};
+
+TrackGeometry.prototype.createShard = function(shard, geom) {
+  for(row = 0; row < shard.rows; row++) {
+    for(col = 0; col < shard.cols; col++) {
+      vs = [
+        (col + 0) * (shard.rows + 1) + row + 0,
+        (col + 1) * (shard.rows + 1) + row + 0,
+        (col + 1) * (shard.rows + 1) + row + 1,
+        (col + 0) * (shard.rows + 1) + row + 1];
+      lastVertex = geom.vertices.length;
+      geom.vertices.push(
+        shard.vertices[vs[0]],
+        shard.vertices[vs[1]],
+        shard.vertices[vs[2]],
+        shard.vertices[vs[3]]);
+      geom.faces.push(
+        new THREE.Face3(lastVertex + 0, lastVertex + 1, lastVertex + 2),
+        new THREE.Face3(lastVertex + 2, lastVertex + 3, lastVertex + 0));
+      geom.faceVertexUvs[0].push(
+        [shard.uvs[vs[0]], shard.uvs[vs[1]], shard.uvs[vs[2]]],
+        [shard.uvs[vs[2]], shard.uvs[vs[3]], shard.uvs[vs[0]]]);
+    }
+  }
 };
 
 TrackGeometry.prototype.addPano = function(pano, cell) {
@@ -71,28 +96,7 @@ TrackGeometry.prototype.addPano = function(pano, cell) {
     color: 0xffffff, side: THREE.DoubleSide, map: texture});
 
   for(i = 0, l = shards.length; i < l; i++) {
-    shard = shards[i];
-    for(row = 0; row < shard.rows; row++) {
-      for(col = 0; col < shard.cols; col++) {
-        vs = [
-          (col + 0) * (shard.rows + 1) + row + 0,
-          (col + 1) * (shard.rows + 1) + row + 0,
-          (col + 1) * (shard.rows + 1) + row + 1,
-          (col + 0) * (shard.rows + 1) + row + 1];
-        lastVertex = shardsGeom.vertices.length;
-        shardsGeom.vertices.push(
-          shard.vertices[vs[0]],
-          shard.vertices[vs[1]],
-          shard.vertices[vs[2]],
-          shard.vertices[vs[3]]);
-        shardsGeom.faces.push(
-          new THREE.Face3(lastVertex + 0, lastVertex + 1, lastVertex + 2),
-          new THREE.Face3(lastVertex + 2, lastVertex + 3, lastVertex + 0));
-        shardsGeom.faceVertexUvs[0].push(
-          [shard.uvs[vs[0]], shard.uvs[vs[1]], shard.uvs[vs[2]]],
-          [shard.uvs[vs[2]], shard.uvs[vs[3]], shard.uvs[vs[0]]]);
-      }
-    }
+    this.createShard(shards[i], shardsGeom);
   }
 
   var shardsMesh = new THREE.Mesh(shardsGeom, shardsMaterial);
@@ -109,7 +113,7 @@ TrackGeometry.prototype.addPano = function(pano, cell) {
   this.add(centerCube);
 
   // add voronoi cell
-  this.addVoronoiCell(cell);
+  if(cell) { this.addVoronoiCell(cell); }
 };
 
 TrackGeometry.prototype.addVoronoiCell = function(cell) {
