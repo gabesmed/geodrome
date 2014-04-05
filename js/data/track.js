@@ -68,7 +68,7 @@ Track.prototype.fetchDirections = function() {
 
 Track.prototype.fetchPanos = function(progressCallback, errorCallback) {
   var promiseChain = RSVP.resolve();
-  var errors = [], panos = [], self = this;
+  var errors = [], panos = [], panoIds = {}, self = this;
   this.route.forEach(function(location, i) {
     promiseChain = promiseChain.then(function() {
       console.info('rendering ' + (i + 1) + ' / ' + self.route.length);

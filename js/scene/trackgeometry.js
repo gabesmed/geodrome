@@ -18,10 +18,10 @@ TrackGeometry.prototype.offsetForLocation = function(location) {
 TrackGeometry.prototype.addPano = function(pano) {
   // create materials
   var i, s;
-  var trackOffset = this.offsetForLocation(pano.panoData.location.latLng);
+  var trackOffset = this.offsetForLocation(pano.location.latLng);
 
   var up = new THREE.Vector3(0, 1, 0);
-  var panoHeading = ((-pano.panoData.heading / 180.0) + 1) * Math.PI;
+  var panoHeading = ((-pano.heading / 180.0) + 1) * Math.PI;
 
   var pointsGeom = new THREE.Geometry();
   var pointsMaterial = new THREE.MeshLambertMaterial({
@@ -31,7 +31,7 @@ TrackGeometry.prototype.addPano = function(pano) {
 
   var shard, shards = pano.getShards(), col, row, lastVertex, vs;
   var shardsGeom = new THREE.Geometry();
-  var texture = new THREE.Texture(pano.panoData.canvas);
+  var texture = new THREE.Texture(pano.panoCanvas);
   var shardsMaterial = new THREE.MeshBasicMaterial({
     color: 0xffffff,
     side: THREE.DoubleSide,

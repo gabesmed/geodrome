@@ -62,7 +62,7 @@ function updateScene() {
   trackEditor.track.fetchPanos(function(pano) {
     // pano loaded
     try {
-      $("#panoContainer").html(pano.panoData.canvas);
+      $("#panoContainer").html(pano.panoCanvas);
       $("#depthContainer").html(pano.getDepthImage());
       $("#planeContainer").html(pano.getPlaneImage());
       trackGeom.addPano(pano);
