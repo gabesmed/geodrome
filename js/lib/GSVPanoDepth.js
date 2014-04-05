@@ -118,11 +118,8 @@ GSVPANO.PanoDepthLoader = function (parameters) {
         if(planeIdx > 0) {
           plane = planes[planeIdx];
           t = plane.d / (v[0]*plane.n[0] + v[1]*plane.n[1] + v[2]*plane.n[2]);
-          v[0] *= t;
-          v[1] *= t;
-          v[2] *= t;
-          depthMap[y * w + x] = Math.sqrt(v[0]*v[0] +
-            v[1]*v[1] + v[2]*v[2]);
+          v[0] *= t; v[1] *= t; v[2] *= t;
+          depthMap[y * w + x] = Math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
         } else {
           depthMap[y * w + x] = 9999999999999999999.0;
         }
@@ -177,9 +174,13 @@ GSVPANO.PanoDepthLoader = function (parameters) {
     }
     var ci = 0;
     _.sortBy(planes, function(p) { return p.x0; }).forEach(function(plane, i) {
-      if(plane.n[2] < -0.95) { plane.ci = -1; return; }
+      if(plane.n[2] < -0.95) {
+        plane.ci = -1; plane.rgb = {r: 120, g: 120, b: 120}; return; }
       plane.ci = ci++;
+      plane.rgb = hsvToRgb({h: (plane.ci * 0.022), s: 1.0, v: 1.0});
     });
+
+    console.log(planes.map(function(p) { return p.w; }));
 
     // overview
     for(planeIdx = 1; planeIdx < header.numberOfPlanes; planeIdx++) {

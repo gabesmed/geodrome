@@ -70,8 +70,8 @@ TrackGeometry.prototype.addPano = function(pano) {
     planesGeom.faces.push(
       new THREE.Face3(i*4+0, i*4+1, i*4+2),
       new THREE.Face3(i*4+2, i*4+3, i*4+0));
-    var rgb = hsvToRgb({h: (plane.ci * 0.04), s: 1.0, v: 1.0});
-    color = new THREE.Color((rgb.r << 16) + (rgb.g << 8) + rgb.b);
+    color = new THREE.Color((plane.rgb.r << 16) +
+      (plane.rgb.g << 8) + plane.rgb.b);
     planesGeom.faces[i*2].vertexColors =
       planesGeom.faces[i*2+1].vertexColors =
       [color, color, color];
