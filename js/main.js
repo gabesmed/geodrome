@@ -28,7 +28,7 @@ scene.add(light);
 // RENDERER CODE
 
 function initRenderer() {
-  camera.position.set(-50, 50, 0);
+  camera.position.set(-50, 100, 0);
   camera.up = new THREE.Vector3(0, 1, 0);
   camera.target = new THREE.Vector3(0, 0, 0);
   camera.lookAt(new THREE.Vector3(0, 0, 0));
@@ -36,11 +36,11 @@ function initRenderer() {
 
 function initScene() {
   // dummy objects
-  var originCubeGeometry = new THREE.CubeGeometry(3, 3, 3);
-  var originCubeMaterial = new THREE.MeshLambertMaterial(
-    {color: 0xffffff, ambient: 0xffffff, shading: THREE.FlatShading});
-  var originCube = new THREE.Mesh(originCubeGeometry, originCubeMaterial);
-  scene.add(originCube);
+  // var originCubeGeometry = new THREE.CubeGeometry(3, 3, 3);
+  // var originCubeMaterial = new THREE.MeshLambertMaterial(
+  //   {color: 0xffffff, ambient: 0xffffff, shading: THREE.FlatShading});
+  // var originCube = new THREE.Mesh(originCubeGeometry, originCubeMaterial);
+  // scene.add(originCube);
 }
 
 function update() {
@@ -84,7 +84,7 @@ function init() {
 
   var initialPath = [
     new google.maps.LatLng(42.345601, -71.098348),
-    new google.maps.LatLng(42.345712, -71.098394)
+    new google.maps.LatLng(42.345815, -71.0984476)
   ];
   trackEditor = new TrackEditor('#trackEditorContainer', initialPath[0]);
   trackEditor.onGenerate = function() { updateScene(); };

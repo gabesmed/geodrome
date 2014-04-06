@@ -73,8 +73,7 @@ Pano.prototype.getDepth = function(depthX, depthY) {
 
 Pano.prototype.getNormal = function(x, y, isPixelCoords) {
   if(isPixelCoords) { x /= this.depthData.width; y /= this.depthData.height; }
-  var twoPi = Math.PI * 2;
-  var azimuth = ((x + 0.5) * twoPi);
+  var azimuth = ((x + 0.5) * THREE.Math.PI2);
   var altitude = Math.PI * (0.5 - y);
   var nx = -Math.cos(azimuth) * Math.cos(altitude);
   var ny = Math.sin(altitude);
@@ -94,7 +93,6 @@ Pano.prototype.getPoint = function(x, y, isPixelCoords) {
 };
 
 Pano.prototype.getPlanePointAtCoord = function(plane, x, y) {
-  var twoPi = Math.PI * 2;
   var w = this.depthData.width, h = this.depthData.height;
   var up = new THREE.Vector3(0, 1, 0);
   var phi = (w - x - 1) / (w - 1) * 2 * Math.PI + Math.PI/2;
@@ -113,7 +111,7 @@ Pano.prototype.getPlanePointAtCoord = function(plane, x, y) {
 };
 
 Pano.prototype.getShards = function() {
-  var twoPi = Math.PI * 2, shards = [],
+  var shards = [],
     w = this.depthData.width,
     h = this.depthData.height, normal, depth,
     shardLeft, shardRight, shardTop, shardBottom, colDepth, shardHeight,
@@ -147,7 +145,7 @@ Pano.prototype.getShards = function() {
       colDepth = colPos.length();
       colNormal = colPos.clone().normalize();
 
-      uvx = Math.atan2(colNormal.z, colNormal.x) / twoPi;
+      uvx = Math.atan2(colNormal.z, colNormal.x) / THREE.Math.PI2;
       if(uvx < 0) { uvx += 1; }
 
       for(row = 0; row <= rows; row++) {
