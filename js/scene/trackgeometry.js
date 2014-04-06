@@ -170,10 +170,10 @@ TrackGeometry.prototype.addVoronoiCell = function(panoRoot, cell, color) {
   cell.edges.forEach(function(edge) {
     var lastVertex = cellGeom.vertices.length;
     cellGeom.vertices.push(
-      edge[0],
-      edge[0].clone().add(up.clone().multiplyScalar(-2)),
-      edge[1].clone().add(up.clone().multiplyScalar(-2)),
-      edge[1]);
+      edge[0].clone().add(up.clone().multiplyScalar(-5)),
+      edge[0].clone().add(up.clone().multiplyScalar(-4)),
+      edge[1].clone().add(up.clone().multiplyScalar(-4)),
+      edge[1].clone().add(up.clone().multiplyScalar(-5)));
     cellGeom.faces.push(
       new THREE.Face3(lastVertex + 0, lastVertex + 1, lastVertex + 2),
       new THREE.Face3(lastVertex + 2, lastVertex + 3, lastVertex + 0));

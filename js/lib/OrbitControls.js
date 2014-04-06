@@ -31,8 +31,9 @@ THREE.OrbitControls = function (object, domElement) {
   this.minPolarAngle = 0; // radians
   this.maxPolarAngle = Math.PI; // radians
 
-  this.minDistance = 0;
+  this.minDistance = 0.1;
   this.maxDistance = Infinity;
+  this.reverseRotationAtDistance = 1;
 
   // internals
 
@@ -201,6 +202,12 @@ THREE.OrbitControls = function (object, domElement) {
 
       rotateEnd.set(event.clientX, event.clientY);
       rotateDelta.subVectors(rotateEnd, rotateStart);
+
+      if(scope.object.position.clone().sub(scope.center).length() <
+          scope.reverseRotationAtDistance) {
+        rotateDelta.negate();
+      }
+
       scope.rotateLeft(THREE.Math.PI2 * rotateDelta.x /
         PIXELS_PER_ROUND * scope.userRotateSpeed);
       scope.rotateUp(THREE.Math.PI2 * rotateDelta.y /
