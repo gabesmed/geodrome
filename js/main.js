@@ -62,9 +62,6 @@ function updateScene() {
     // new pano loaded callback
     console.info('fetching ' + (i + 1) + ' / ' +
       trackEditor.track.route.length);
-    $("#panoContainer").html(pano.panoCanvas);
-    $("#depthContainer").html(pano.getDepthImage());
-    $("#planeContainer").html(pano.getPlaneImage());
   }, function(errorMessage) {
     console.error(errorMessage);
   }).then(function(result) {

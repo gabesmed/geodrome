@@ -13,15 +13,20 @@ GSVPANO.PanoDepthLoader = function () {
 
   this.getData = function(cache, panoId) {
     // get data and set in cache.
-    var cachedData = cache.getJson('depth-' + panoId);
-    if(cachedData) {
-      console.info('depth', panoId, 'loaded from cache');
-      return RSVP.resolve(cachedData);
-    }
-    console.info('depth', panoId, 'fetched live');
-    return this.fetch(panoId).then(function(data) {
-      cache.setJson('depth-' + panoId, data);
-      return data;
+    var self = this;
+    return new RSVP.Promise(function(resolve) {
+      cache.getJson('depth-' + panoId, function(cachedData) {
+        if(cachedData) {
+          console.info('depth', panoId, 'loaded from cache');
+          resolve(cachedData);
+          return;
+        }
+        console.info('depth', panoId, 'fetched live');
+        resolve(self.fetch(panoId).then(function(data) {
+          cache.setJson('depth-' + panoId, data);
+          return data;
+        }));
+      });
     });
   };
 

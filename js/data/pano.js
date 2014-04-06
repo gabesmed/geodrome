@@ -69,14 +69,19 @@ Pano.cachePano = function(cache, pano) {
 Pano.getCachedPano = function(cache, location) {
   return new RSVP.Promise(function(resolve) {
     cache.panoIdForLocation(location, function(panoId) {
-      if(!panoId) { console.log('id not found for ',
-        location.lat(), ',', location.lng()); resolve(null); return; }
+      if(!panoId) {
+        console.log('id not found for ', location.lat(), ',', location.lng());
+        resolve(null); return; }
       cache.getJson('pano-' + panoId, function(panoData) {
-        if(!panoData) { console.log('data not found for ',
-          location.lat(), ',', location.lng()); resolve(null); return; }
+        if(!panoData) {
+          console.log('data not found for ',
+            location.lat(), ',', location.lng());
+          resolve(null); return; }
         cache.getImage('pano-image-' + panoId, function(panoCanvas) {
-          if(!panoCanvas) { console.log('canvas not found for ',
-            location.lat(), ',', location.lng()); resolve(null); return; }
+          if(!panoCanvas) {
+            console.log('canvas not found for ',
+              location.lat(), ',', location.lng());
+            resolve(null); return; }
           resolve({
             panoId: panoData.panoId,
             heading: panoData.heading,
