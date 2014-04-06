@@ -20,12 +20,12 @@ var Pano = function() {
 
 Pano.load = function(cache, location) {
   var pano = new Pano(), self = this;
-  return self.fetchPano(location).then(function(panoData) {
+  return self.getPano(cache, location).then(function(panoData) {
     // save data
     pano.panoId = panoData.panoId;
     pano.heading = panoData.heading;
     pano.copyright = panoData.copyright;
-    pano.location = panoData.location.latLng;
+    pano.location = panoData.location;
     pano.panoCanvas = panoData.canvas;
 
     // load depth
@@ -34,6 +34,60 @@ Pano.load = function(cache, location) {
   }).then(function(depthData) {
     pano.depthData = depthData;
     return pano;
+  });
+};
+
+Pano.getPano = function(cache, location) {
+  var self = this;
+  return this.getCachedPano(cache, location).then(function(cachedPano) {
+    if(cachedPano) {
+      console.info('pano', cachedPano.panoId, 'loaded from cache');
+      return cachedPano;
+    }
+    console.info('pano at ' + location.lat() + ', ' + location.lng() +
+      ' fetching live');
+    return self.fetchPano(location).then(function(pano) {
+      self.cachePano(cache, pano);
+      return pano;
+    });
+  });
+};
+
+Pano.cachePano = function(cache, pano) {
+  var panoData = {
+    panoId: pano.panoId, heading: pano.heading, copyright: pano.copyright,
+    location: [pano.location.lat(), pano.location.lng()]};
+  try {
+    cache.cachePanoLocation(pano.panoId, pano.location);
+    cache.setJson('pano-' + pano.panoId, panoData);
+    cache.setImage('pano-image-' + pano.panoId, pano.canvas);
+  } catch(err) {
+    console.error("Error caching pano " + pano.panoId + ": " + err);
+  }
+};
+
+Pano.getCachedPano = function(cache, location) {
+  return new RSVP.Promise(function(resolve) {
+    cache.panoIdForLocation(location, function(panoId) {
+      if(!panoId) { console.log('id not found for ',
+        location.lat(), ',', location.lng()); resolve(null); return; }
+      cache.getJson('pano-' + panoId, function(panoData) {
+        if(!panoData) { console.log('data not found for ',
+          location.lat(), ',', location.lng()); resolve(null); return; }
+        cache.getImage('pano-image-' + panoId, function(panoCanvas) {
+          if(!panoCanvas) { console.log('canvas not found for ',
+            location.lat(), ',', location.lng()); resolve(null); return; }
+          resolve({
+            panoId: panoData.panoId,
+            heading: panoData.heading,
+            copyright: panoData.copyright,
+            location: new google.maps.LatLng(
+              panoData.location[0], panoData.location[1]),
+            canvas: panoCanvas
+          });
+        });
+      });
+    });
   });
 };
 
@@ -46,7 +100,8 @@ Pano.fetchPano = function(location) {
       resolve({
         canvas: this.canvas,
         heading: rawPanoData.tiles.centerHeading,
-        location: rawPanoData.location,
+        copyright: rawPanoData.copyright,
+        location: rawPanoData.location.latLng,
         panoId: this.panoId
       });
     };
