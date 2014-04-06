@@ -71,7 +71,6 @@ Track.prototype.fetchPanos = function(progressCallback, errorCallback) {
   var errors = [], panos = [], panoIds = {}, self = this;
   this.route.forEach(function(location, i) {
     promiseChain = promiseChain.then(function() {
-      console.info('rendering ' + (i + 1) + ' / ' + self.route.length);
       return Pano.load(location);
     }).then(function(pano) {
       if(!!panoIds[pano.panoId]) { return; }  // pano has already been loaded!

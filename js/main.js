@@ -56,8 +56,10 @@ function render() {
 
 function updateScene() {
   if(trackGeom) { scene.remove(trackGeom); }
-  trackEditor.track.fetchPanos(function(pano) {
+  trackEditor.track.fetchPanos(function(pano, i) {
     // new pano loaded callback
+    console.info('fetching ' + (i + 1) + ' / ' +
+      trackEditor.track.route.length);
     $("#panoContainer").html(pano.panoCanvas);
     $("#depthContainer").html(pano.getDepthImage());
     $("#planeContainer").html(pano.getPlaneImage());
@@ -83,8 +85,8 @@ function init() {
   $("#renderContainer").html(renderer.domElement);
 
   var initialPath = [
-    new google.maps.LatLng(42.345601, -71.098348),
-    new google.maps.LatLng(42.345815, -71.0984476)
+    new google.maps.LatLng(42.346247, -71.098675),
+    // new google.maps.LatLng(42.346461, -71.099391)
   ];
   trackEditor = new TrackEditor('#trackEditorContainer', initialPath[0]);
   trackEditor.onGenerate = function() { updateScene(); };

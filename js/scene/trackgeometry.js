@@ -41,7 +41,9 @@ TrackGeometry.prototype.calculateVoronoi = function(panos) {
   bounds.yt -= boundsMargin; bounds.yb += boundsMargin;
 
   var voronoi = new Voronoi().compute(sites, bounds);
-  var cells = voronoi.cells.map(function(cell) {
+  var cells = sites.map(function(site) {
+    var cell = voronoi.cells.filter(
+      function(c) { return c.site === site; })[0];
     var edges = cell.halfedges.map(function(halfedge) {
       var pt0 = halfedge.getStartpoint(),
           pt1 = halfedge.getEndpoint();
@@ -75,7 +77,7 @@ TrackGeometry.prototype.createShard = function(
       if(dot0L < 0 && dot0R < 0) { isClipped = true; }
     }
 
-    if(isClipped) { continue; }
+    // if(isClipped) { continue; }
     var addToGeom = isClipped ? clippedGeom : geom;
 
     for(row = 0; row < shard.rows; row++) {
@@ -101,10 +103,8 @@ TrackGeometry.prototype.createShard = function(
 };
 
 TrackGeometry.prototype.addPano = function(pano, cell, idx) {
-  console.log("**** PANO", pano.panoId);
-
   var i, up = new THREE.Vector3(0, 1, 0);
-  var hue = idx * 0.1;
+  var hue = (idx % 13) / 13.0;
   var rgb = hsvToRgb({h: hue, s: 1.0, v: 1.0});
   var color = new THREE.Color(rgb.r / 255, rgb.g / 255, rgb.b / 255);
 
@@ -133,29 +133,33 @@ TrackGeometry.prototype.addPano = function(pano, cell, idx) {
   var texture = new THREE.Texture(pano.panoCanvas);
   texture.needsUpdate = true;
   var shardsMaterial = new THREE.MeshBasicMaterial({
-    color: color,
-    // color: 0xffffff,
-    // map: texture,
+    // color: color,
+    color: 0xffffff,
+    map: texture,
     side: THREE.DoubleSide
   });
 
   var clippedShardsGeom = new THREE.Geometry();
   var clippedShardsMaterial = new THREE.MeshBasicMaterial({
-    color: 0x444444, side: THREE.DoubleSide});
+    // color: 0x444444,
+    color: color,
+    side: THREE.DoubleSide, wireframe: true
+  });
 
   for(i = 0, l = shards.length; i < l; i++) {
     this.createShard(shards[i], panoCell, shardsGeom, clippedShardsGeom);
   }
 
   var shardsMesh = new THREE.Mesh(shardsGeom, shardsMaterial);
-  var clippedShardsMesh = new THREE.Mesh(clippedShardsGeom, clippedShardsMaterial);
+  var clippedShardsMesh = new THREE.Mesh(
+    clippedShardsGeom, clippedShardsMaterial);
   panoRoot.add(shardsMesh);
   panoRoot.add(clippedShardsMesh);
 
   // create viewpoint cube
   var cubeGeometry = new THREE.CubeGeometry(1, 1, 1);
   var cubeMaterial = new THREE.MeshLambertMaterial({
-    color: 0xffffff, ambient: 0xffffff, shading: THREE.FlatShading});
+    color: color, ambient: color, shading: THREE.FlatShading});
   var centerCube = new THREE.Mesh(cubeGeometry, cubeMaterial);
   panoRoot.add(centerCube);
 };
