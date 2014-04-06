@@ -66,12 +66,12 @@ Track.prototype.fetchDirections = function() {
   });
 };
 
-Track.prototype.fetchPanos = function(progressCallback, errorCallback) {
+Track.prototype.fetchPanos = function(cache, progressCallback, errorCallback) {
   var promiseChain = RSVP.resolve();
   var errors = [], panos = [], panoIds = {}, self = this;
   this.route.forEach(function(location, i) {
     promiseChain = promiseChain.then(function() {
-      return Pano.load(location);
+      return Pano.load(cache, location);
     }).then(function(pano) {
       if(!!panoIds[pano.panoId]) { return; }  // pano has already been loaded!
       panoIds[pano.panoId] = true;

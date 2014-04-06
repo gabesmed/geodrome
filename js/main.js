@@ -25,6 +25,8 @@ var light = new THREE.DirectionalLight(0xffffff);
 light.position.set(-1, 1, 1).normalize();
 scene.add(light);
 
+var panoCache = new PanoCache();
+
 // RENDERER CODE
 
 function initRenderer() {
@@ -56,13 +58,15 @@ function render() {
 
 function updateScene() {
   if(trackGeom) { scene.remove(trackGeom); }
-  trackEditor.track.fetchPanos(function(pano, i) {
+  trackEditor.track.fetchPanos(panoCache, function(pano, i) {
     // new pano loaded callback
     console.info('fetching ' + (i + 1) + ' / ' +
       trackEditor.track.route.length);
     $("#panoContainer").html(pano.panoCanvas);
     $("#depthContainer").html(pano.getDepthImage());
     $("#planeContainer").html(pano.getPlaneImage());
+  }, function(errorMessage) {
+    console.error(errorMessage);
   }).then(function(result) {
     // success!
     if(result.numErrors) { console.warning(numErrors + ' errors.'); }

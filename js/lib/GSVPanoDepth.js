@@ -1,42 +1,43 @@
 var GSVPANO = GSVPANO || {};
-GSVPANO.PanoDepthLoader = function (parameters) {
-
+GSVPANO.PanoDepthLoader = function () {
   'use strict';
 
-  var _parameters = parameters || {},
-    onDepthLoad = null;
-
-  this.onError = function(errorMessage) {
-    console.error(errorMessage);
+  this.load = function(cache, panoId) {
+    var self = this;
+    return this.getData(cache, panoId).then(function(data) {
+      var decoded = self.decode(data.model.depth_map);
+      var depthMap = self.parse(decoded);
+      return depthMap;
+    });
   };
-  this.onDepthLoad = function() {};
 
-  this.load = function(panoId) {
-    var self = this,
-      url;
+  this.getData = function(cache, panoId) {
+    // get data and set in cache.
+    var cachedData = cache.getJson('depth-' + panoId);
+    if(cachedData) {
+      console.info('depth', panoId, 'loaded from cache');
+      return RSVP.resolve(cachedData);
+    }
+    console.info('depth', panoId, 'fetched live');
+    return this.fetch(panoId).then(function(data) {
+      cache.setJson('depth-' + panoId, data);
+      return data;
+    });
+  };
 
-    url = "http://maps.google.com/cbk?output=json&cb_client=maps_sv&v=4&dm=1&pm=1&ph=1&hl=en&panoid=" + panoId;
-
-    $.ajax({
-        url: url,
-        dataType: 'jsonp'
-      })
-      .done(function(data, textStatus, xhr) {
-        var decoded = self.decode(data.model.depth_map);
-        self.depthMap = self.parse(decoded);
-        self.onDepthLoad();
-      })
-      .fail(function(xhr, textStatus, errorThrown) {
-        self.onError("Request failed: " + url + "\n" + textStatus + "\n" + errorThrown);
-      });
+  this.fetch = function(panoId) {
+    return new RSVP.Promise(function(resolve, reject) {
+      var url = "http://maps.google.com/cbk?output=json&cb_client=maps_sv&v=4&dm=1&pm=1&ph=1&hl=en&panoid=" + panoId;
+      $.ajax({url: url, dataType: 'jsonp'})
+        .done(function(data, textStatus, xhr) { resolve(data); })
+        .fail(function(xhr, textStatus, errorThrown) {
+          reject(textStatus + ": " + errorThrown);
+        });
+    });
   };
 
   this.decode = function(rawDepthMap) {
-    var self = this,
-           i,
-           compressedDepthMapData,
-           depthMap,
-           decompressedDepthMap;
+    var self = this, i, compressedDepthMapData, depthMap, decompressedDepthMap;
 
     // Append '=' in order to make the length of the array a multiple of 4
     while(rawDepthMap.length % 4 !== 0)
@@ -95,13 +96,8 @@ GSVPANO.PanoDepthLoader = function (parameters) {
   };
 
   this.computeDepthMap = function(header, indices, planes) {
-    var depthMap = null,
-      x, y,
-      planeIdx,
-      phi, theta,
-      v = [0, 0, 0],
-      w = header.width, h = header.height,
-      plane, t, p;
+    var depthMap = null, x, y, planeIdx, phi, theta, v = [0, 0, 0],
+      w = header.width, h = header.height, plane, t, p;
 
     depthMap = new Float32Array(w*h);
 
@@ -217,11 +213,8 @@ GSVPANO.PanoDepthLoader = function (parameters) {
         rgb = hsvToRgb({h: ((ci++) * 0.022), s: 1.0, v: 1.0});
       }
       shard.rgb = rgb;
+      if(!planes[shard.planeIdx].rgb) { planes[shard.planeIdx].rgb = s.rgb; }
     });
-    _.sortBy(shards, function(s) { return -s.x0; }).forEach(function(s, i) {
-      planes[s.planeIdx].rgb = s.rgb;
-    });
-
     return shards;
   };
 
