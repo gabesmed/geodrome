@@ -1,4 +1,4 @@
-var TrackEditor = function(sel, center) {
+var TrackEditor = function(sel, initialPath) {
   var template = Handlebars.compile($("#track-editor-template").html());
   var self = this, context = {};
   this.$el = $(sel);
@@ -13,7 +13,7 @@ var TrackEditor = function(sel, center) {
     zoom: 16,
     overviewMapControl: false,
     streetViewControl: false,
-    center: center,
+    center: initialPath[0],
     disableDoubleClickZoom: true
   };
   this.map = new google.maps.Map(this.$el.find('.map-canvas')[0], mapOptions);
@@ -30,7 +30,11 @@ var TrackEditor = function(sel, center) {
 
   this.geocoder = new google.maps.Geocoder();
   this.markers = [];
-  this.reset([]);
+  this.loadPromise = this.reset(initialPath);
+};
+
+TrackEditor.prototype.then = function(resolve, reject) {
+  return this.loadPromise.then(resolve, reject);
 };
 
 TrackEditor.prototype.reset = function(waypoints) {

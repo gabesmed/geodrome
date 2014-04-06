@@ -36,15 +36,6 @@ function initRenderer() {
   camera.lookAt(new THREE.Vector3(0, 0, 0));
 }
 
-function initScene() {
-  // dummy objects
-  // var originCubeGeometry = new THREE.CubeGeometry(3, 3, 3);
-  // var originCubeMaterial = new THREE.MeshLambertMaterial(
-  //   {color: 0xffffff, ambient: 0xffffff, shading: THREE.FlatShading});
-  // var originCube = new THREE.Mesh(originCubeGeometry, originCubeMaterial);
-  // scene.add(originCube);
-}
-
 function update() {
   controls.update();
   requestAnimationFrame(update);
@@ -82,16 +73,15 @@ function updateScene() {
 
 function init() {
   initRenderer();
-  initScene();
   $("#renderContainer").html(renderer.domElement);
 
   var initialPath = [
     new google.maps.LatLng(42.346247, -71.098675),
     new google.maps.LatLng(42.346461, -71.099391)
   ];
-  trackEditor = new TrackEditor('#trackEditorContainer', initialPath[0]);
+  trackEditor = new TrackEditor('#trackEditorContainer', initialPath);
+  trackEditor.then(function() { updateScene(); });
   trackEditor.onGenerate = function() { updateScene(); };
-  trackEditor.reset(initialPath).then(function() { updateScene(); });
   update();
 }
 
