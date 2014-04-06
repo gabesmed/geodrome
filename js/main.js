@@ -84,7 +84,7 @@ function init() {
 
   var initialPath = [
     new google.maps.LatLng(42.345601, -71.098348),
-    new google.maps.LatLng(42.346555, -71.098644)
+    new google.maps.LatLng(42.345712, -71.098394)
   ];
   trackEditor = new TrackEditor('#trackEditorContainer', initialPath[0]);
   trackEditor.onGenerate = function() { updateScene(); };

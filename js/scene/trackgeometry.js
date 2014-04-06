@@ -54,24 +54,45 @@ TrackGeometry.prototype.calculateVoronoi = function(panos) {
   return cells;
 };
 
-TrackGeometry.prototype.createShard = function(shard, cell, geom) {
-  for(row = 0; row < shard.rows; row++) {
-    for(col = 0; col < shard.cols; col++) {
+TrackGeometry.prototype.createShard = function(
+    shard, cell, geom, clippedGeom) {
+
+  var up = new THREE.Vector3(0, 1, 0);
+
+  for(col = 0; col < shard.cols; col++) {
+
+    var isClipped = false;
+    var colL = shard.vertices[(col + 0) * (shard.rows + 1)];
+    var colR = shard.vertices[(col + 1) * (shard.rows + 1)];
+
+    for(var c = 0, cl = cell.edges.length; c < cl; c++) {
+      var edge = cell.edges[c];
+      var vL = colL.clone().sub(edge[0]);
+      var vR = colR.clone().sub(edge[0]);
+      var edgeNormal = edge[1].clone().sub(edge[0]).normalize().cross(up);
+      var dotL = edgeNormal.dot(vL);
+      var dotR = edgeNormal.dot(vR);
+      if(dotL < 0 && dotR < 0) { isClipped = true; }
+    }
+
+    var addToGeom = isClipped ? clippedGeom : geom;
+
+    for(row = 0; row < shard.rows; row++) {
       vs = [
         (col + 0) * (shard.rows + 1) + row + 0,
         (col + 1) * (shard.rows + 1) + row + 0,
         (col + 1) * (shard.rows + 1) + row + 1,
         (col + 0) * (shard.rows + 1) + row + 1];
-      lastVertex = geom.vertices.length;
-      geom.vertices.push(
+      lastVertex = addToGeom.vertices.length;
+      addToGeom.vertices.push(
         shard.vertices[vs[0]],
         shard.vertices[vs[1]],
         shard.vertices[vs[2]],
         shard.vertices[vs[3]]);
-      geom.faces.push(
+      addToGeom.faces.push(
         new THREE.Face3(lastVertex + 0, lastVertex + 1, lastVertex + 2),
         new THREE.Face3(lastVertex + 2, lastVertex + 3, lastVertex + 0));
-      geom.faceVertexUvs[0].push(
+      addToGeom.faceVertexUvs[0].push(
         [shard.uvs[vs[0]], shard.uvs[vs[1]], shard.uvs[vs[2]]],
         [shard.uvs[vs[2]], shard.uvs[vs[3]], shard.uvs[vs[0]]]);
     }
@@ -79,7 +100,12 @@ TrackGeometry.prototype.createShard = function(shard, cell, geom) {
 };
 
 TrackGeometry.prototype.addPano = function(pano, cell) {
+  console.log("**** PANO", pano.panoId);
+
   var i, s, up = new THREE.Vector3(0, 1, 0);
+
+  var hue = (pano.panoId.hashCode() % 1000) * 0.001;
+  var rgb = hsvToRgb(hue, 1.0, 1.0);
 
   // create pano root
   var panoRoot = new THREE.Object3D();
@@ -96,7 +122,7 @@ TrackGeometry.prototype.addPano = function(pano, cell) {
   var panoCell = {edges: cell.edges.map(function(edge) {
     return [reverseXform(edge[0]), reverseXform(edge[1])];
   })};
-  if(cell.edges.length) { this.addVoronoiCell(panoRoot, panoCell); }
+  if(cell.edges.length) { this.addVoronoiCell(panoRoot, panoCell, rgb); }
 
   // create shards
   var shards = pano.getShards();
@@ -105,12 +131,24 @@ TrackGeometry.prototype.addPano = function(pano, cell) {
   var texture = new THREE.Texture(pano.panoCanvas);
   texture.needsUpdate = true;
   var shardsMaterial = new THREE.MeshBasicMaterial({
-    color: 0xffffff, side: THREE.DoubleSide, map: texture});
+    color: new THREE.Color(rgb.r, rgb.g, rgb.b),
+    // color: 0xffffff,
+    // map: texture,
+    side: THREE.DoubleSide
+  });
+
+  var clippedShardsGeom = new THREE.Geometry();
+  var clippedShardsMaterial = new THREE.MeshBasicMaterial({
+    color: 0x444444, side: THREE.DoubleSide});
+
   for(i = 0, l = shards.length; i < l; i++) {
-    this.createShard(shards[i], cell, shardsGeom);
+    this.createShard(shards[i], cell, shardsGeom, clippedShardsGeom);
   }
+
   var shardsMesh = new THREE.Mesh(shardsGeom, shardsMaterial);
+  var clippedShardsMesh = new THREE.Mesh(clippedShardsGeom, clippedShardsMaterial);
   panoRoot.add(shardsMesh);
+  panoRoot.add(clippedShardsMesh);
 
   // create viewpoint cube
   var cubeGeometry = new THREE.CubeGeometry(1, 1, 1);
@@ -120,22 +158,24 @@ TrackGeometry.prototype.addPano = function(pano, cell) {
   panoRoot.add(centerCube);
 };
 
-TrackGeometry.prototype.addVoronoiCell = function(panoRoot, cell) {
+TrackGeometry.prototype.addVoronoiCell = function(panoRoot, cell, rgb) {
   var cellGeom = new THREE.Geometry();
   var up = new THREE.Vector3(0, 1, 0);
   cell.edges.forEach(function(edge) {
     var lastVertex = cellGeom.vertices.length;
     cellGeom.vertices.push(
-      edge[0].clone(),
+      edge[0],
       edge[0].clone().add(up.clone().multiplyScalar(-2)),
       edge[1].clone().add(up.clone().multiplyScalar(-2)),
-      edge[1].clone());
+      edge[1]);
     cellGeom.faces.push(
       new THREE.Face3(lastVertex + 0, lastVertex + 1, lastVertex + 2),
       new THREE.Face3(lastVertex + 2, lastVertex + 3, lastVertex + 0));
   });
   var cellMaterial = new THREE.MeshLambertMaterial({
-    color: 0xffffff, ambient: 0xffffff, shading: THREE.FlatShading});
+    color: new THREE.Color(rgb.r, rgb.g, rgb.b),
+    ambient: new THREE.Color(rgb.r, rgb.g, rgb.b),
+    shading: THREE.FlatShading});
   var cellMesh = new THREE.Mesh(cellGeom, cellMaterial);
   panoRoot.add(cellMesh);
 };
