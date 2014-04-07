@@ -3,6 +3,7 @@ var TrackGeometry = function(track, panos) {
   this.track = track;
   if(!this.track.waypoints.length) { throw new Error("Empty track"); }
   this.createGeometry(panos);
+  this.up = new THREE.Vector3(0, 1, 0);
 };
 
 TrackGeometry.prototype = Object.create(THREE.Object3D.prototype);
@@ -54,13 +55,12 @@ TrackGeometry.prototype.calculateVoronoi = function(panos) {
 
 TrackGeometry.prototype.isSegInsideCell = function(s0, s1, cell, strict) {
   if(strict === undefined) { strict = false; }
-  var up = new THREE.Vector3(0, 1, 0);
   for(var c = 0, cl = cell.edges.length; c < cl; c++) {
     var edge = cell.edges[c];
     var v01 = edge[1].clone().sub(edge[0]);
     var v0L = s0.clone().sub(edge[0]);
     var v0R = s1.clone().sub(edge[0]);
-    var n = v01.normalize().cross(up);
+    var n = v01.normalize().cross(this.up);
     var dot0L = n.dot(v0L);
     var dot0R = n.dot(v0R);
     if(dot0L < 0 && dot0R < 0) { return false; }
@@ -69,26 +69,46 @@ TrackGeometry.prototype.isSegInsideCell = function(s0, s1, cell, strict) {
   return true;
 };
 
-TrackGeometry.prototype.createShard = function(
-    shardLists, panoIndex, shardIndex, cell, geom, clippedGeom) {
+TrackGeometry.prototype.getShardsOverlapping = function(
+    panoIndex, shardIndex) {
+  var shard = this.shardsLists[panoIndex][shardIndex], testShard;
+  var overlappingShards = [], numPanos = this.shardsLists.length, numShards;
+  for(var p = 0; p < numPanos; p++) {
+    // skip shards in same panorama, as they won't overlap each other.
+    if(p === panoIndex) { continue; }
+    numShards = this.shardsLists[panoIndex].length;
+    for(var s = 0; s < numShards; s++) {
+      testShard = this.shardsLists[panoIndex][s];
+    }
+  }
+};
 
-  var shard = shardLists[panoIndex][shardIndex];
+TrackGeometry.prototype.createShard = function(
+    panoIndex, shardIndex, cell, geom, clippedGeom) {
+
+  var shard = this.shardsLists[panoIndex][shardIndex];
   var shardL = shard.vertices[0];
   var shardR = shard.vertices[shard.cols * (shard.rows + 1)];
-  var isShardInCell = this.isSegInsideCell(shardL, shardR, cell, true);
+  var isShardWithinCell = this.isSegInsideCell(shardL, shardR, cell, true);
   var doesShardTouchCell = this.isSegInsideCell(shardL, shardR, cell);
 
   var colL, colR, colIsVisible, isColInsideCell, addToGeom;
   for(col = 0; col < shard.cols; col++) {
     // check if this column is inside the cell. If it is not, clip it.
-    if(isShardInCell) {
-      colIsVisible = true;
+    if(isShardWithinCell) {
+      isColInsideCell = true;
     } else if(doesShardTouchCell) {
       colL = shard.vertices[(col + 0) * (shard.rows + 1)];
       colR = shard.vertices[(col + 1) * (shard.rows + 1)];
       isColInsideCell = this.isSegInsideCell(colL, colR, cell);
-      colIsVisible = isColInsideCell;
     } else {
+      isColInsideCell = false;
+    }
+    if(isColInsideCell) {
+      colIsVisible = true;
+    } else {
+      // if col is not inside cell, check if there are any overlapping bits
+      // If not, use it.
       colIsVisible = false;
     }
     addToGeom = colIsVisible ? geom : clippedGeom;
@@ -116,40 +136,51 @@ TrackGeometry.prototype.createShard = function(
 };
 
 TrackGeometry.prototype.createGeometry = function(panos) {
-  var cells = this.calculateVoronoi(panos);
-  var shardsLists = panos.map(function(pano) { return pano.getShards(); });
+  this.panos = panos;
+  this.cells = this.calculateVoronoi(panos);
+  this.panoRoots = [];
+  this.panoMatrices = [];
+  this.shardsLists = [];
+  panos.forEach(function(pano) {
+    // create root object for each panorama
+    var panoRoot = new THREE.Object3D();
+    var panoOffset = this.offsetForLocation(pano.location);
+    var panoHeading = ((-pano.heading / 180.0) + 1) * Math.PI;
+    var panoMatrix = new THREE.Matrix4();
+    panoMatrix.makeRotationAxis(this.up, panoHeading);
+    panoMatrix.setPosition(panoOffset);
+    panoRoot.applyMatrix(panoMatrix);
+    this.panoMatrices.push(panoMatrix);
+    this.panoRoots.push(panoRoot);
+    this.add(panoRoot);
+    // and create shards list.
+    var shards = pano.getShards();
+    this.shardsLists.push(shards);
+  }, this);
   for(var i = 0, l = panos.length; i < l; i++) {
-    this.createPano(panos, cells, shardsLists, i);
+    this.createPano(i);
   }
 };
 
-TrackGeometry.prototype.createPano = function(panos, cells,
-    shardLists, panoIndex) {
+TrackGeometry.prototype.createPano = function(panoIndex) {
 
-  var pano = panos[panoIndex];
-  var cell = cells[panoIndex];
-  var shards = shardLists[panoIndex];
+  var pano = this.panos[panoIndex];
+  var cell = this.cells[panoIndex];
+  var shards = this.shardsLists[panoIndex];
+  var panoRoot = this.panoRoots[panoIndex];
+  var panoMatrix = this.panoMatrices[panoIndex];
 
-  var shardIndex, up = new THREE.Vector3(0, 1, 0);
+  var shardIndex;
   var hue = (panoIndex % 13) / 13.0;
   var rgb = hsvToRgb({h: hue, s: 1.0, v: 1.0});
   var color = new THREE.Color(rgb.r / 255, rgb.g / 255, rgb.b / 255);
 
-  // create pano root
-  var panoRoot = new THREE.Object3D();
-  var panoOffset = this.offsetForLocation(pano.location);
-  var panoHeading = ((-pano.heading / 180.0) + 1) * Math.PI;
-
-  panoRoot.setRotationFromAxisAngle(up, panoHeading);
-  panoRoot.position = panoOffset;
-  this.add(panoRoot);
-
   // create voronoi cell
-  function reverseXform(pt) {
-    return pt.clone().sub(panoOffset).applyAxisAngle(up, -panoHeading);
-  }
+  var panoInverse = new THREE.Matrix4().getInverse(panoMatrix);
   var panoCell = {edges: cell.edges.map(function(edge) {
-    return [reverseXform(edge[0]), reverseXform(edge[1])];
+    return [
+      edge[0].clone().applyMatrix4(panoInverse),
+      edge[1].clone().applyMatrix4(panoInverse)];
   })};
   if(cell.edges.length) { this.addVoronoiCell(panoRoot, panoCell, color); }
 
@@ -173,9 +204,9 @@ TrackGeometry.prototype.createPano = function(panos, cells,
     side: THREE.DoubleSide, wireframe: true
   });
 
-  var numShards = shardLists[panoIndex].length;
+  var numShards = this.shardsLists[panoIndex].length;
   for(shardIndex = 0; shardIndex < numShards; shardIndex++) {
-    this.createShard(shardLists, panoIndex, shardIndex, panoCell,
+    this.createShard(panoIndex, shardIndex, panoCell,
       shardsGeom, clippedShardsGeom);
   }
 
@@ -195,18 +226,17 @@ TrackGeometry.prototype.createPano = function(panos, cells,
 
 TrackGeometry.prototype.addVoronoiCell = function(panoRoot, cell, color) {
   var cellGeom = new THREE.Geometry();
-  var up = new THREE.Vector3(0, 1, 0);
   cell.edges.forEach(function(edge) {
     var lastVertex = cellGeom.vertices.length;
     cellGeom.vertices.push(
-      edge[0].clone().add(up.clone().multiplyScalar(-4)),
-      edge[0].clone().add(up.clone().multiplyScalar(-5)),
-      edge[1].clone().add(up.clone().multiplyScalar(-5)),
-      edge[1].clone().add(up.clone().multiplyScalar(-4)));
+      edge[0].clone().add(this.up.clone().multiplyScalar(-4)),
+      edge[0].clone().add(this.up.clone().multiplyScalar(-5)),
+      edge[1].clone().add(this.up.clone().multiplyScalar(-5)),
+      edge[1].clone().add(this.up.clone().multiplyScalar(-4)));
     cellGeom.faces.push(
       new THREE.Face3(lastVertex + 0, lastVertex + 1, lastVertex + 2),
       new THREE.Face3(lastVertex + 2, lastVertex + 3, lastVertex + 0));
-  });
+  }, this);
   var cellMaterial = new THREE.MeshLambertMaterial({
     color: color,
     ambient: color,
