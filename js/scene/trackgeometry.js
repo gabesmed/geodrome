@@ -72,15 +72,44 @@ TrackGeometry.prototype.isSegInsideCell = function(s0, s1, cell, strict) {
 TrackGeometry.prototype.getShardsOverlapping = function(
     panoIndex, shardIndex) {
   var shard = this.shardsLists[panoIndex][shardIndex], testShard;
-  var overlappingShards = [], numPanos = this.shardsLists.length, numShards;
-  for(var p = 0; p < numPanos; p++) {
+  var shardMatrix = this.panoMatrices[panoIndex];
+  var s0 = shard.vertices[0].clone().applyMatrix4(shardMatrix);
+  var s1 = shard.vertices[shard.cols * (shard.rows + 1)]
+    .clone().applyMatrix4(shardMatrix);
+  var sray = s1.clone().sub(s0).normalize();
+  var slength = s1.clone().sub(s0).length();
+
+  var maxDist = 1;
+
+  var overlappingShards = [], numPanos = this.shardsLists.length, numShards,
+    s, p, t0, t1, testMatrix, t0diff, t1diff, t0dot, t1dot, t0dist, t1dist, t0along, t1along;
+  for(p = 0; p < numPanos; p++) {
     // skip shards in same panorama, as they won't overlap each other.
     if(p === panoIndex) { continue; }
-    numShards = this.shardsLists[panoIndex].length;
-    for(var s = 0; s < numShards; s++) {
-      testShard = this.shardsLists[panoIndex][s];
+    numShards = this.shardsLists[p].length;
+    testMatrix = this.panoMatrices[p];
+    for(s = 0; s < numShards; s++) {
+      testShard = this.shardsLists[p][s];
+      t0 = testShard.vertices[0].clone().applyMatrix4(testMatrix);
+      t1 = testShard.vertices[testShard.cols * (testShard.rows + 1)]
+        .clone().applyMatrix4(testMatrix);
+      t0diff = t0.clone().sub(s0);
+      t0dot = t0diff.clone().normalize().dot(sray);
+      t0dist = (1 - Math.abs(t0dot)) * t0diff.length();
+      if(t0dist > maxDist) { continue; } // t0 is too far away to overlap
+      t1diff = t1.clone().sub(s0);
+      t1dot = t1diff.clone().normalize().dot(sray);
+      t1dist = (1 - Math.abs(t1dot)) * t1diff.length();
+      if(t1dist > maxDist) { continue; } // t1 is too far away to overlap
+      t0along = t0diff.dot(sray);
+      t1along = t1diff.dot(sray);
+      if(t0along < 0 && t1along < 0) { continue; } // both before plane starts
+      // both after ends
+      if(t0along > slength && t1along > slength) { continue; }
+      overlappingShards.push(testShard);
     }
   }
+  return overlappingShards;
 };
 
 TrackGeometry.prototype.createShard = function(
@@ -91,6 +120,8 @@ TrackGeometry.prototype.createShard = function(
   var shardR = shard.vertices[shard.cols * (shard.rows + 1)];
   var isShardWithinCell = this.isSegInsideCell(shardL, shardR, cell, true);
   var doesShardTouchCell = this.isSegInsideCell(shardL, shardR, cell);
+
+  var isShardTouchingOther = this.getShardsOverlapping(panoIndex, shardIndex);
 
   var colL, colR, colIsVisible, isColInsideCell, addToGeom;
   for(col = 0; col < shard.cols; col++) {
@@ -108,8 +139,12 @@ TrackGeometry.prototype.createShard = function(
       colIsVisible = true;
     } else {
       // if col is not inside cell, check if there are any overlapping bits
-      // If not, use it.
-      colIsVisible = false;
+      // If not, use it. Otherwise, hide.
+      if(isShardTouchingOther.length > 0) {
+        colIsVisible = false;
+      } else {
+        colIsVisible = true;
+      }
     }
     addToGeom = colIsVisible ? geom : clippedGeom;
 
@@ -199,12 +234,12 @@ TrackGeometry.prototype.createPano = function(panoIndex) {
   var clippedShardsGeom = new THREE.Geometry();
   var clippedShardsMaterial = new THREE.MeshBasicMaterial({
     // color: 0x444444,
-    // visible: false,
+    visible: false,
     color: color,
     side: THREE.DoubleSide, wireframe: true
   });
 
-  var numShards = this.shardsLists[panoIndex].length;
+  var numShards = shards.length;
   for(shardIndex = 0; shardIndex < numShards; shardIndex++) {
     this.createShard(panoIndex, shardIndex, panoCell,
       shardsGeom, clippedShardsGeom);
