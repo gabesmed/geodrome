@@ -1,17 +1,17 @@
-#frame {
-    overflow: auto;
+body { margin: 0; padding: 0; }
+
+#frame {}
+
+.track-editor {
+    position: absolute;
+    width: 300px;
+    height: 500px;
+    top: 100px; left: 100px;
+    padding: 20px;
+    background: white;
 }
 
-#trackEditorContainer { float: left; width: 300px; margin-right: 10px; }
-.form-search { padding: 4px; }
-.txt-search { width: 100%; font-size: 18pt; }
-.map-canvas { height: 300px; width: 300px; }
-
-
-#renderContainer { float: left; width: 800px; }
-
-#extras { margin-top: 10px; }
-#depthContainer { display: none; }
-#panoContainer canvas { max-width: 500px; }
-
-button { font-size: 24pt; line-height: 120%; }
+.track-editor .form-search { padding: 4px; }
+.track-editor .txt-search { width: 100%; font-size: 18pt; }
+.track-editor .map-canvas { height: 300px; width: 300px; }
+.track-editor button { font-size: 24pt; line-height: 120%; }

@@ -1,13 +1,25 @@
 var PanoCache = function() {};
 
+PanoCache.ZERO_RESULTS = 'ZERO_RESULTS';
+
 PanoCache.prototype.cachePanoLocation = function(panoId, location) {
   var self = this;
   this.getJson('panoLocations', function(panoLocations) {
-    panoLocations = panoLocations || {};
-    if(!panoLocations[panoId]) {
-      panoLocations[panoId] = [location.lat(), location.lng()];
+    panoLocations = panoLocations || [];
+    if(!panoLocations.filter(function(i) { return i[0] === panoId; }).length) {
+      panoLocations.push([panoId, [location.lat(), location.lng()]]);
       self.setJson('panoLocations', panoLocations);
     }
+  });
+};
+
+PanoCache.prototype.cacheNoResults = function(location) {
+  var self = this;
+  this.getJson('panoLocations', function(panoLocations) {
+    panoLocations = panoLocations || [];
+    panoLocations.push([PanoCache.ZERO_RESULTS,
+      [location.lat(), location.lng()]]);
+    self.setJson('panoLocations', panoLocations);
   });
 };
 
@@ -19,12 +31,12 @@ PanoCache.prototype.panoIdForLocation = function(location, callback) {
     var closestPanoId = null, closestDist = self.panoCacheMaxDistance,
       dist, panoLoc, panoId;
     if(!locs) { callback(null); return; }
-    for(panoId in locs) {
-      panoLoc = new google.maps.LatLng(locs[panoId][0], locs[panoId][1]);
+    locs.forEach(function(item) {
+      panoLoc = new google.maps.LatLng(item[1][0], item[1][1]);
       dist = google.maps.geometry.spherical.computeDistanceBetween(
         location, panoLoc);
-      if(dist < closestDist) { closestDist = dist; closestPanoId = panoId; }
-    }
+      if(dist < closestDist) { closestDist = dist; closestPanoId = item[0]; }
+    });
     callback(closestPanoId);
   });
 };

@@ -40,27 +40,28 @@
 <body>
 
   <script id="track-editor-template" type="text/x-handlebars-template">
-    <div>
-      <form class='form-search'>
-        <input type='text' class='txt-search'
-          placeholder='Zoom to city or address'/>
-      </form>
+    <div class='track-editor'>
+      <div>
+        <form class='form-search'>
+          <input type='text' class='txt-search'
+            placeholder='Zoom to city or address'/>
+        </form>
+      </div>
+      <div class='map-canvas'></div>
+      <div class='track-status'></div>
+      <div>
+        <label>
+          <input class='check-loop' type='checkbox'/>Loop
+        </label>
+      </div>
+      <button class='btn-clear'>Clear</button>
+      <button class='btn-generate'>Generate</button>
     </div>
-    <div class='map-canvas'></div>
-    <div class='track-status'></div>
-    <div>
-      <label>
-        <input class='check-loop' type='checkbox'/>Loop
-      </label>
-    </div>
-    <button class='btn-clear'>Clear</button>
-    <button class='btn-generate'>Generate</button>
   </script>
 
-  <div id='frame'>
-    <div id='trackEditorContainer'></div>
-    <div id='renderContainer'></div>
-  </div>
+  <div id='trackEditorContainer'></div>
+
+  <div id='renderContainer'></div>
 
 </body> 
 </html>

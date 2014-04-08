@@ -76,17 +76,15 @@ Track.prototype.fetchPanos = function(cache, progressCallback, errorCallback) {
       if(!!panoIds[pano.panoId]) { return; }  // pano has already been loaded!
       panoIds[pano.panoId] = true;
       panos.push(pano);
-      errors.push(null);
       if(progressCallback) { progressCallback(pano, i); }
     }, function(err) {
-      panos.push(null);
       errors.push(err);
       if(errorCallback) { errorCallback(err, i); }
     });
   }, this);
   return promiseChain.then(function() {
-    var numErrors = errors.filter(function(err) { return !!err; }).length;
-    return {panos: panos, errors: errors, numErrors: numErrors};
+    console.log('done');
+    return {panos: panos, errors: errors, numErrors: errors.length};
   }, function(err) {
     console.log('error fetching panos', err);
   });

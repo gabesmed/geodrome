@@ -96,7 +96,7 @@ GSVPANO.PanoLoader = function (parameters) {
         self.composePanorama();
       } else {
         if( self.onNoPanoramaData ) self.onNoPanoramaData( status );
-        self.throwError('Could not retrieve panorama for the following reason: ' + status);
+        self.throwError(status);
       }
     });
 

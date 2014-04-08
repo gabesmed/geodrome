@@ -2,8 +2,8 @@ var TrackGeometry = function(track, panos) {
   THREE.Object3D.call(this);
   this.track = track;
   if(!this.track.waypoints.length) { throw new Error("Empty track"); }
-  this.createGeometry(panos);
   this.up = new THREE.Vector3(0, 1, 0);
+  this.createGeometry(panos);
 };
 
 TrackGeometry.prototype = Object.create(THREE.Object3D.prototype);

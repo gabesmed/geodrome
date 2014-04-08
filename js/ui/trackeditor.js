@@ -1,4 +1,4 @@
-var TrackEditor = function(sel, initialPath) {
+var TrackEditor = function(sel, initialPath, isLoop) {
   var template = Handlebars.compile($("#track-editor-template").html());
   var self = this, context = {};
   this.$el = $(sel);
@@ -30,18 +30,20 @@ var TrackEditor = function(sel, initialPath) {
 
   this.geocoder = new google.maps.Geocoder();
   this.markers = [];
-  this.loadPromise = this.reset(initialPath);
+  this.loadPromise = this.reset(initialPath, isLoop);
 };
 
 TrackEditor.prototype.then = function(resolve, reject) {
   return this.loadPromise.then(resolve, reject);
 };
 
-TrackEditor.prototype.reset = function(waypoints) {
+TrackEditor.prototype.reset = function(waypoints, isLoop) {
   this.track = new Track();
   this.track.setWaypoints(waypoints);
+  this.track.isLoop = isLoop;
   this.clearMarkers();
   waypoints.forEach(function(w, i) { this.addMarker(w); }, this);
+  this.$el.find(".check-loop").attr('checked', isLoop);
   return this.onWaypointsChanged();
 };
 

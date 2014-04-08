@@ -1,3 +1,8 @@
+// RSVP init
+RSVP.on('error', function(reason) {
+  console.assert(false, reason);
+});
+
 // MAP INITIALIZATION
 var trackEditor = null, trackGeom = null;
 
@@ -6,10 +11,11 @@ var scene, camera, renderer, controls;
 var environments = {};
 var sceneWidth = 800, sceneHeight = 500;
 scene = new THREE.Scene();
-camera = new THREE.PerspectiveCamera(75, sceneWidth / sceneHeight, 0.1, 10000);
+camera = new THREE.PerspectiveCamera(75,
+  window.innerWidth / window.innerHeight, 0.1, 10000);
 
 renderer = new THREE.WebGLRenderer();
-renderer.setSize(sceneWidth, sceneHeight);
+renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.domElement.addEventListener('mousewheel',
   function(e) { e.preventDefault(); }, false );
 renderer.domElement.addEventListener('DOMMouseScroll',
@@ -47,6 +53,12 @@ function render() {
   // requestAnimationFrame(render);
 }
 
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
 function updateScene() {
   if(trackGeom) { scene.remove(trackGeom); }
   trackEditor.track.fetchPanos(panoCache, function(pano, i) {
@@ -57,7 +69,7 @@ function updateScene() {
     console.error(errorMessage);
   }).then(function(result) {
     // success!
-    if(result.numErrors) { console.warning(numErrors + ' errors.'); }
+    if(result.numErrors) { console.warn(result.numErrors + ' errors.'); }
     else { console.info('all ok!'); }
     try {
       trackGeom = new TrackGeometry(trackEditor.track, result.panos);
@@ -74,12 +86,12 @@ function updateScene() {
 function init() {
   initRenderer();
   $("#renderContainer").html(renderer.domElement);
-
+  window.addEventListener('resize', onWindowResize, false);
   var initialPath = [
     new google.maps.LatLng(42.346247, -71.098675),
     new google.maps.LatLng(42.346461, -71.099391)
   ];
-  trackEditor = new TrackEditor('#trackEditorContainer', initialPath);
+  trackEditor = new TrackEditor('#trackEditorContainer', initialPath, true);
   trackEditor.then(function() { updateScene(); });
   trackEditor.onGenerate = function() { updateScene(); };
   update();
