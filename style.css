@@ -6,9 +6,19 @@ body { margin: 0; padding: 0; }
     position: absolute;
     width: 300px;
     height: 500px;
-    top: 100px; left: 100px;
+    top: 50px;
+    left: 50px;
     padding: 20px;
     background: white;
+}
+
+#trackEditorPrompt {
+    position: absolute;
+    top: 50px;
+    left: 50px;
+    background: white;
+    padding: 10px;
+    cursor: pointer;
 }
 
 .track-editor .form-search { padding: 4px; }

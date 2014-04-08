@@ -1,4 +1,4 @@
-var TrackEditor = function(sel, initialPath, isLoop) {
+var TrackEditor = function(sel, track) {
   var template = Handlebars.compile($("#track-editor-template").html());
   var self = this, context = {};
   this.$el = $(sel);
@@ -6,6 +6,8 @@ var TrackEditor = function(sel, initialPath, isLoop) {
 
   this.$el.find(".btn-clear").click(this.onClear.bind(this));
   this.$el.find(".btn-generate").click(function() { self.onGenerate(); });
+  this.$el.find(".btn-go").click(function() { self.onRace(); });
+  this.$el.find(".btn-cancel").click(function() { self.onCancel(); });
   this.$el.find(".check-loop").click(this.onLoop.bind(this));
   this.$el.find(".form-search, .txt-search").submit(this.onSearch.bind(this));
 
@@ -13,7 +15,7 @@ var TrackEditor = function(sel, initialPath, isLoop) {
     zoom: 16,
     overviewMapControl: false,
     streetViewControl: false,
-    center: initialPath[0],
+    center: track.waypoints[0],
     disableDoubleClickZoom: true
   };
   this.map = new google.maps.Map(this.$el.find('.map-canvas')[0], mapOptions);
@@ -30,20 +32,20 @@ var TrackEditor = function(sel, initialPath, isLoop) {
 
   this.geocoder = new google.maps.Geocoder();
   this.markers = [];
-  this.loadPromise = this.reset(initialPath, isLoop);
+  this.loadPromise = this.reset(track);
+  this.markClean();
 };
 
 TrackEditor.prototype.then = function(resolve, reject) {
   return this.loadPromise.then(resolve, reject);
 };
 
-TrackEditor.prototype.reset = function(waypoints, isLoop) {
-  this.track = new Track();
-  this.track.setWaypoints(waypoints);
-  this.track.isLoop = isLoop;
+TrackEditor.prototype.reset = function(track) {
+  this.track = track;
   this.clearMarkers();
-  waypoints.forEach(function(w, i) { this.addMarker(w); }, this);
-  this.$el.find(".check-loop").attr('checked', isLoop);
+  track.waypoints.forEach(function(w, i) { this.addMarker(w); }, this);
+  this.$el.find(".check-loop").attr('checked', track.isLoop);
+  this.markClean();
   return this.onWaypointsChanged();
 };
 
@@ -84,7 +86,18 @@ TrackEditor.prototype.onMarkerDragend = function(e, marker) {
 };
 
 TrackEditor.prototype.onWaypointsChanged = function() {
+  this.markDirty();
   return this.track.updateRoute().then(this.updateTrackDisplay.bind(this));
+};
+
+TrackEditor.prototype.markDirty = function() {
+  this.$el.find(".btn-generate").attr('disabled', false);
+  this.$el.find(".btn-go").attr('disabled', true);
+};
+
+TrackEditor.prototype.markClean = function() {
+  this.$el.find(".btn-generate").attr('disabled', true);
+  this.$el.find(".btn-go").attr('disabled', false);
 };
 
 TrackEditor.prototype.onSearch = function(e) {
@@ -124,8 +137,11 @@ TrackEditor.prototype.onClear = function() {
 };
 
 TrackEditor.prototype.onGenerate = function() {};
+TrackEditor.prototype.onRace = function() {};
+TrackEditor.prototype.onCancel = function() {};
 
 TrackEditor.prototype.onLoop = function() {
   this.track.isLoop = this.$el.find(".check-loop").is(":checked");
   this.onWaypointsChanged();
 };
+

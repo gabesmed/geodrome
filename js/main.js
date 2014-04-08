@@ -4,6 +4,19 @@ RSVP.on('error', function(reason) {
 });
 
 // MAP INITIALIZATION
+var CLASSIC_TRACKS = [
+  [42.346247, -71.098675, 42.346461, -71.099391, 1]
+];
+
+var initialTrack;
+if(window.location.hash) {
+  initialTrack = window.location.hash.substr(1);
+} else {
+  initialTrack = CLASSIC_TRACKS[Math.floor(
+    Math.random() * CLASSIC_TRACKS.length)];
+}
+var currentTrack = Track.deserialize(initialTrack);
+
 var trackEditor = null, trackGeom = null;
 
 // RENDERER INITIALIZATION
@@ -59,12 +72,14 @@ function onWindowResize() {
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
-function updateScene() {
+function updateScene(track) {
   if(trackGeom) { scene.remove(trackGeom); }
-  trackEditor.track.fetchPanos(panoCache, function(pano, i) {
+  currentTrack = track;
+  window.location.hash = track.serialize();
+  track.fetchPanos(panoCache, function(pano, i) {
     // new pano loaded callback
     console.info('fetching ' + (i + 1) + ' / ' +
-      trackEditor.track.route.length);
+      track.route.length);
   }, function(errorMessage) {
     console.error(errorMessage);
   }).then(function(result) {
@@ -72,7 +87,7 @@ function updateScene() {
     if(result.numErrors) { console.warn(result.numErrors + ' errors.'); }
     else { console.info('all ok!'); }
     try {
-      trackGeom = new TrackGeometry(trackEditor.track, result.panos);
+      trackGeom = new TrackGeometry(track, result.panos);
     } catch(err) {
       console.error(err);
     }
@@ -83,17 +98,39 @@ function updateScene() {
   });
 }
 
+function createTrackEditor() {
+  trackEditor = new TrackEditor('#trackEditorContainer', currentTrack);
+  trackEditor.then(function() { updateScene(trackEditor.track); });
+  trackEditor.onGenerate = function() { updateScene(trackEditor.track); };
+  trackEditor.onCancel = function() {
+    closeTrackEditor();
+  };
+  trackEditor.onRace = function() {
+    if(!trackGeom) { return; }
+    closeTrackEditor();
+  };
+  $("#trackEditorPrompt").click(function() {
+    openTrackEditor();
+  });
+}
+
+function openTrackEditor() {
+  $("#trackEditorContainer").show();
+  $("#trackEditorPrompt").hide();
+}
+
+function closeTrackEditor() {
+  $("#trackEditorContainer").hide();
+  $("#trackEditorPrompt").show();
+}
+
+
 function init() {
   initRenderer();
   $("#renderContainer").html(renderer.domElement);
   window.addEventListener('resize', onWindowResize, false);
-  var initialPath = [
-    new google.maps.LatLng(42.346247, -71.098675),
-    new google.maps.LatLng(42.346461, -71.099391)
-  ];
-  trackEditor = new TrackEditor('#trackEditorContainer', initialPath, true);
-  trackEditor.then(function() { updateScene(); });
-  trackEditor.onGenerate = function() { updateScene(); };
+  createTrackEditor();
+  openTrackEditor();
   update();
 }
 

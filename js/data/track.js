@@ -1,6 +1,6 @@
-var Track = function() {
-  this.waypoints = [];
-  this.isLoop = false;
+var Track = function(waypoints, isLoop) {
+  this.waypoints = waypoints || [];
+  this.isLoop = isLoop !== undefined ? isLoop : false;
   this.route = [];
 };
 
@@ -8,13 +8,35 @@ Track.directionsService = new google.maps.DirectionsService();
 
 Track.MIN_ROUTEPOINT_DISTANCE = 15;
 
+Track.deserialize = function(data) {
+  if(typeof data === 'string') {
+    data = data.split(',').map(function(i) { return parseFloat(i); });
+  }
+  var numPoints = (data.length - 1) / 2;
+  var waypoints = [];
+  for(var i = 0; i < numPoints; i++) {
+    waypoints.push(new google.maps.LatLng(data[2*i], data[2*i+1]));
+  }
+  return new Track(waypoints, !!data[data.length - 1]);
+};
+
+Track.prototype.serialize = function() {
+  var s = '';
+  this.waypoints.forEach(function(waypoint) {
+    s += waypoint.lat().toFixed(6) + ',';
+    s += waypoint.lng().toFixed(6) + ',';
+  });
+  s += this.isLoop ? '1' : '0';
+  return s;
+};
+
 Track.prototype.setWaypoints = function(waypoints) {
   this.waypoints = waypoints;
 };
 
 Track.prototype.updateRoute = function() {
   var self = this;
-  if(this.waypoints.length === 0) { return RSVP.resolve(); }
+  if(this.waypoints.length === 0) { self.route = []; return RSVP.resolve(); }
   return this.fetchDirections().then(function(response) {
     if(!response) { self.route = self.waypoints; return; }
     var rawPath = response.routes[0].overview_path;
