@@ -73,28 +73,36 @@ function onWindowResize() {
 }
 
 function updateScene(track) {
-  if(trackGeom) { scene.remove(trackGeom); }
+
+  if(currentTrack) {
+    if(currentTrack.isFetching) { currentTrack.cancelFetch(); }
+    currentTrack = null;
+  }
+  if(trackGeom) {
+    scene.remove(trackGeom);
+    trackGeom = null;
+  }
+
   currentTrack = track;
   window.location.hash = track.serialize();
+
+  $("#trackLoading").fadeIn().html("0%");
   track.fetchPanos(panoCache, function(pano, i) {
     // new pano loaded callback
-    console.info('fetching ' + (i + 1) + ' / ' +
-      track.route.length);
+    $("#trackLoading").show().html(
+      Math.floor(100 * (i + 1) / track.route.length) + "%");
   }, function(errorMessage) {
     console.error(errorMessage);
   }).then(function(result) {
-    // success!
-    if(result.numErrors) { console.warn(result.numErrors + ' errors.'); }
-    else { console.info('all ok!'); }
-    try {
-      trackGeom = new TrackGeometry(track, result.panos);
-    } catch(err) {
-      console.error(err);
-    }
+    $("#trackLoading").html("100%").fadeOut();
+    trackGeom = new TrackGeometry(track, result.panos);
     scene.add(trackGeom);
     render();
   }, function(err) {
+    // mostly in case of an interrupt
     console.error(err);
+  }).then(function() {
+    $("#trackLoading").fadeOut();
   });
 }
 

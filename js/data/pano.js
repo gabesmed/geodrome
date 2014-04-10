@@ -41,15 +41,15 @@ Pano.getPano = function(cache, location) {
   var self = this;
   return this.getCachedPano(cache, location).then(function(cachedPano) {
     if(cachedPano === PanoCache.ZERO_RESULTS) {
-      console.info('empty result loaded from cache');
+      // console.info('empty result loaded from cache');
       throw new Error('ZERO_RESULTS');
     }
     if(cachedPano) {
-      console.info('pano', cachedPano.panoId, 'loaded from cache');
+      // console.info('pano', cachedPano.panoId, 'loaded from cache');
       return cachedPano;
     }
-    console.info('pano at ' + location.lat() + ', ' + location.lng() +
-      ' fetching live');
+    // console.info('pano at ' + location.lat() + ', ' + location.lng() +
+    //   ' fetching live');
     return self.fetchPano(location).then(function(pano) {
       self.cachePano(cache, pano);
       return pano;
@@ -83,18 +83,18 @@ Pano.getCachedPano = function(cache, loc) {
   return new RSVP.Promise(function(resolve) {
     cache.panoIdForLocation(loc, function(panoId) {
       if(!panoId) {
-        console.log('id not found for ', loc.lat(), ',', loc.lng());
+        // console.log('id not found for ', loc.lat(), ',', loc.lng());
         resolve(null); return; }
       if(panoId === PanoCache.ZERO_RESULTS) {
-        console.log('cached no results for ', loc.lat(), ',', loc.lng());
+        // console.log('cached no results for ', loc.lat(), ',', loc.lng());
         resolve(PanoCache.ZERO_RESULTS); return; }
       cache.getJson('pano-' + panoId, function(panoData) {
         if(!panoData) {
-          console.log('data not found for ', loc.lat(), ',', loc.lng());
+          // console.log('data not found for ', loc.lat(), ',', loc.lng());
           resolve(null); return; }
         cache.getImage('pano-image-' + panoId, function(panoCanvas) {
           if(!panoCanvas) {
-            console.log('canvas not found for ', loc.lat(), ',', loc.lng());
+            // console.log('canvas not found for ', loc.lat(), ',', loc.lng());
             resolve(null); return; }
           resolve({
             panoId: panoData.panoId,

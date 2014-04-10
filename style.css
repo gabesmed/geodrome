@@ -21,6 +21,22 @@ body { margin: 0; padding: 0; }
     cursor: pointer;
 }
 
+#trackLoading {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    margin-top: -50px;
+    margin-left: -75px;
+    height: 100px;
+    width: 150px;
+    background: white;
+    color: black;
+    font-size: 80px;
+    padding: 20px;
+    line-height: 120%;
+    text-align: center;
+}
+
 .track-editor .form-search { padding: 4px; }
 .track-editor .txt-search { width: 100%; font-size: 18pt; }
 .track-editor .map-canvas { height: 300px; width: 300px; }

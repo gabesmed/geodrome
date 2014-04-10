@@ -106,7 +106,7 @@ TrackEditor.prototype.onSearch = function(e) {
   this.geocoder.geocode(query, function(results, status) {
     if (status === google.maps.GeocoderStatus.OK) {
       self.map.setCenter(results[0].geometry.location);
-      self.reset([results[0].geometry.location]);
+      self.reset(new Track([results[0].geometry.location], false));
       self.$el.find(".txt-search").val("");
     } else {
       console.error("Geocoding failed: " + status);
