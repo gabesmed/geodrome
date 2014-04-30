@@ -31,7 +31,10 @@
   
   <script src="js/ui/trackeditor.js" type="text/javascript"></script>
   
-  <script src="js/scene/trackgeometry.js" type="text/javascript"></script>
+  <script src="js/geometry/trackgeometry.js" type="text/javascript"></script>
+  
+  <script src="js/scene/blankscene.js" type="text/javascript"></script>
+  <script src="js/scene/gamescene.js" type="text/javascript"></script>
 
   <script src="js/main.js" type="text/javascript"></script>
 
@@ -41,20 +44,20 @@
 
   <script id="track-editor-template" type="text/x-handlebars-template">
     <div class='track-editor'>
-      <div>
+      <div class='section-search'>
         <form class='form-search'>
           <input type='text' class='txt-search'
             placeholder='Zoom to city or address'/>
         </form>
+        <a class='btn-cancel'>&times;</a>
       </div>
       <div class='map-canvas'></div>
-      <div class='track-status'></div>
-      <div>
+      <div class='track-options'>
+        <span class='track-status'></span>
         <label>
           <input class='check-loop' type='checkbox'/>Loop
         </label>
       </div>
-      <button class='btn-cancel'>Cancel</button>
       <button class='btn-clear'>Clear</button>
       <button class='btn-generate'>Preview</button>
       <button class='btn-go'>Race!</button>

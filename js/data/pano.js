@@ -40,16 +40,11 @@ Pano.load = function(cache, location) {
 Pano.getPano = function(cache, location) {
   var self = this;
   return this.getCachedPano(cache, location).then(function(cachedPano) {
+    // Get cached if present.
     if(cachedPano === PanoCache.ZERO_RESULTS) {
-      // console.info('empty result loaded from cache');
-      throw new Error('ZERO_RESULTS');
-    }
-    if(cachedPano) {
-      // console.info('pano', cachedPano.panoId, 'loaded from cache');
-      return cachedPano;
-    }
-    // console.info('pano at ' + location.lat() + ', ' + location.lng() +
-    //   ' fetching live');
+      throw new Error('ZERO_RESULTS'); }
+    if(cachedPano) { return cachedPano; }
+    // Fetch live
     return self.fetchPano(location).then(function(pano) {
       self.cachePano(cache, pano);
       return pano;
@@ -110,10 +105,12 @@ Pano.getCachedPano = function(cache, loc) {
   });
 };
 
+Pano.PANO_ZOOM = 2;
+
 Pano.fetchPano = function(location) {
+  var rawPanoData;
+  var panoLoader = new GSVPANO.PanoLoader({zoom: this.PANO_ZOOM});
   return new RSVP.Promise(function(resolve, reject) {
-    var rawPanoData;
-    var panoLoader = new GSVPANO.PanoLoader({zoom: 1});
     panoLoader.onPanoramaData = function(result) { rawPanoData = result; };
     panoLoader.onPanoramaLoad = function() {
       resolve({

@@ -104,14 +104,20 @@ Track.prototype.fetchPanos = function(cache, progressCallback, errorCallback) {
   var interrupt = this._fetchInterrupt = new Date().getTime();
 
   var errors = [], panos = [], panoIds = {}, self = this;
+  var notFound = [];
 
-  var routeIndex = 0;
+  var routeIndex = 0, routeLength = this.route.length;
   return new RSVP.Promise(function(resolve, reject) {
     var finished = function() {
       self.isFetching = false;
       self.fetchProgress = 1;
       self.isFetched = true;
-      resolve({panos: panos, errors: errors, numErrors: errors.length});
+      resolve({
+        routeLength: routeLength,
+        panos: panos,
+        errors: errors,
+        notFound: notFound
+      });
     };
     var fetchNext = function() {
       Pano.load(cache, self.route[routeIndex]).then(function(pano) {
@@ -123,8 +129,13 @@ Track.prototype.fetchPanos = function(cache, progressCallback, errorCallback) {
         if(progressCallback) { progressCallback(pano, routeIndex); }
       }, function(err) {
         // pano error
-        errors.push(err);
-        if(errorCallback) { errorCallback(err, routeIndex); }
+        if(err.message === 'ZERO_RESULTS') {
+          // no results -- not a big deal
+          notFound.push(routeIndex);
+        } else {
+          errors.push(err);
+          if(errorCallback) { errorCallback(err, routeIndex); }
+        }
       }).then(function() {
         // pano was either success or failure.
         routeIndex++;
@@ -136,32 +147,4 @@ Track.prototype.fetchPanos = function(cache, progressCallback, errorCallback) {
     };
     fetchNext();
   });
-
-  // this.route.forEach(function(location, i) {
-  //   promiseChain = promiseChain.then(function() {
-  //     if(self._fetchInterrupted) { return CANCELED; }
-  //     return Pano.load(cache, location);
-  //   }).then(function(pano) {
-  //     if(pano === CANCELED) { return; }
-  //     self.fetchProgress = i / self.route.length;
-  //     if(!!panoIds[pano.panoId]) { return; }  // pano has already been loaded!
-  //     panoIds[pano.panoId] = true;
-  //     panos.push(pano);
-  //     if(progressCallback) { progressCallback(pano, i); }
-  //   }, function(err) {
-  //     self.fetchProgress = i / self.route.length;
-  //     errors.push(err);
-  //     if(errorCallback) { errorCallback(err, i); }
-  //   });
-  // }, this);
-  // return promiseChain.then(function() {
-  //   if(self._fetchInterrupted) { return null; }
-  //   console.log('done');
-  //   self.isFetching = false;
-  //   self.fetchProgress = 1;
-  //   self.isFetched = true;
-  //   return {panos: panos, errors: errors, numErrors: errors.length};
-  // }, function(err) {
-  //   console.log('error fetching panos', err);
-  // });
 };

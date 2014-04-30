@@ -41,6 +41,7 @@ TrackGeometry.prototype.calculateVoronoi = function(panos) {
   var cells = sites.map(function(site) {
     var cell = voronoi.cells.filter(
       function(c) { return c.site === site; })[0];
+    if(!cell) { return {edges: []}; }
     var edges = cell.halfedges.map(function(halfedge) {
       var pt0 = halfedge.getStartpoint(),
           pt1 = halfedge.getEndpoint();
@@ -147,6 +148,7 @@ TrackGeometry.prototype.createShard = function(
       }
     }
     addToGeom = colIsVisible ? geom : clippedGeom;
+    if(!addToGeom) { continue; }
 
     for(row = 0; row < shard.rows; row++) {
       vs = [
@@ -233,16 +235,17 @@ TrackGeometry.prototype.createPano = function(panoIndex) {
 
   var clippedShardsGeom = new THREE.Geometry();
   var clippedShardsMaterial = new THREE.MeshBasicMaterial({
-    // color: 0x444444,
+    color: 0x444444,
+    opacity: 0.2,
     visible: false,
-    color: color,
+    // color: color,
     side: THREE.DoubleSide, wireframe: true
   });
 
   var numShards = shards.length;
   for(shardIndex = 0; shardIndex < numShards; shardIndex++) {
     this.createShard(panoIndex, shardIndex, panoCell,
-      shardsGeom, clippedShardsGeom);
+      shardsGeom, null);
   }
 
   var shardsMesh = new THREE.Mesh(shardsGeom, shardsMaterial);
@@ -273,9 +276,13 @@ TrackGeometry.prototype.addVoronoiCell = function(panoRoot, cell, color) {
       new THREE.Face3(lastVertex + 2, lastVertex + 3, lastVertex + 0));
   }, this);
   var cellMaterial = new THREE.MeshLambertMaterial({
-    color: color,
-    ambient: color,
-    shading: THREE.FlatShading});
+    color: 0x444444,
+    ambient: 0x444444,
+    opacity: 0.3
+    // color: color,
+    // ambient: color,
+    // shading: THREE.FlatShading
+  });
   var cellMesh = new THREE.Mesh(cellGeom, cellMaterial);
   panoRoot.add(cellMesh);
 };

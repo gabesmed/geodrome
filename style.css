@@ -1,22 +1,18 @@
-body { margin: 0; padding: 0; }
+/*
+TEAL: #00ff8a;
+PINK: #ff00b4;
+*/
+
+body { margin: 0; padding: 0; font-family: sans-serif;}
 
 #frame {}
 
-.track-editor {
-    position: absolute;
-    width: 300px;
-    height: 500px;
-    top: 50px;
-    left: 50px;
-    padding: 20px;
-    background: white;
-}
 
 #trackEditorPrompt {
     position: absolute;
     top: 50px;
     left: 50px;
-    background: white;
+    background: #00ff8a;
     padding: 10px;
     cursor: pointer;
 }
@@ -29,7 +25,7 @@ body { margin: 0; padding: 0; }
     margin-left: -75px;
     height: 100px;
     width: 150px;
-    background: white;
+    background: #ff00b4;
     color: black;
     font-size: 80px;
     padding: 20px;
@@ -37,7 +33,25 @@ body { margin: 0; padding: 0; }
     text-align: center;
 }
 
-.track-editor .form-search { padding: 4px; }
+.track-editor {
+    position: absolute;
+    width: 300px;
+    height: 400px;
+    top: 50px;
+    left: 50px;
+    padding: 10px;
+    background: #00ff8a;
+}
+.track-editor .section-search { overflow: auto; }
+.track-editor .form-search { float: left; width: 270px; }
+.track-editor .btn-cancel { float: left; font-size: 30px;
+    margin-left: 13px; cursor: pointer; }
+.track-editor .btn-cancel:hover { background: white; }
 .track-editor .txt-search { width: 100%; font-size: 18pt; }
+.track-editor .track-options label { display: inline; }
 .track-editor .map-canvas { height: 300px; width: 300px; }
-.track-editor button { font-size: 24pt; line-height: 120%; }
+.track-editor button { background: black; color: white; border: 0;
+    font-size: 18pt; line-height: 120%; cursor: pointer; }
+.track-editor button:hover { background: #444;}
+.track-editor button:disabled { background: #444; color: #aaa;
+    cursor: inherit; }
